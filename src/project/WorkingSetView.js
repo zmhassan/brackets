@@ -32,6 +32,8 @@
  */
 define(function (require, exports, module) {
     "use strict";
+    
+    var _ = require("lodash");
 
     // Load dependent modules
     var DocumentManager       = require("document/DocumentManager"),
@@ -39,7 +41,6 @@ define(function (require, exports, module) {
         Commands              = require("command/Commands"),
         Menus                 = require("command/Menus"),
         FileViewController    = require("project/FileViewController"),
-        CollectionUtils       = require("utils/CollectionUtils"),
         ViewUtils             = require("utils/ViewUtils");
     
     
@@ -118,7 +119,7 @@ define(function (require, exports, module) {
         // This function is used to loop through map and resolve duplicate names
         var processMap = function (map) {
             var didSomething = false;
-            CollectionUtils.forEach(map, function (arr, key) {
+            _.forEach(map, function (arr, key) {
                 // length > 1 means we have duplicates that need to be resolved
                 if (arr.length > 1) {
                     arr.forEach(function (index) {
@@ -184,7 +185,7 @@ define(function (require, exports, module) {
         });
 
         // Go through the map and solve the arrays with length over 1. Ignore the rest.
-        CollectionUtils.forEach(map, function (value) {
+        _.forEach(map, function (value) {
             if (value.length > 1) {
                 _addDirectoryNamesToWorkingTreeFiles(value);
             }
@@ -606,14 +607,6 @@ define(function (require, exports, module) {
 
     /** 
      * @private
-     */
-    function _handleDocumentSelectionChange() {
-        _updateListSelection();
-        _fireSelectionChanged();
-    }
-
-    /** 
-     * @private
      * @param {FileEntry} file
      * @param {boolean=} suppressRedraw If true, suppress redraw
      */
@@ -720,7 +713,7 @@ define(function (require, exports, module) {
             _handleFileNameChanged(oldName, newName);
         });
         
-        $(FileViewController).on("documentSelectionFocusChange fileViewFocusChange", _handleDocumentSelectionChange);
+        $(FileViewController).on("documentSelectionFocusChange fileViewFocusChange", _updateListSelection);
         
         // Show scroller shadows when open-files-container scrolls
         ViewUtils.addScrollerShadow($openFilesContainer[0], null, true);

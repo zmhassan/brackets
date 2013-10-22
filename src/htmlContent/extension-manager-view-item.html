@@ -1,12 +1,10 @@
 <tr>
     <td class="ext-info">
         <span class="ext-name">{{#metadata.title}}{{metadata.title}}{{/metadata.title}}{{^metadata.title}}{{metadata.name}}{{/metadata.title}}</span>
-        <span class="muted ext-version">{{metadata.version}}</span>
         {{#authorInfo}}
-            <span class="muted ext-author">
-                &mdash; {{{authorInfo}}}
-            </span>
+            <span class="muted ext-author">{{{authorInfo}}}</span>
         {{/authorInfo}}
+        <span class="muted ext-version">{{metadata.version}}</span>
         {{#hasVersionInfo}}
             <span class="muted ext-date"> &mdash; {{lastVersionDate}}</span>
         {{/hasVersionInfo}}
@@ -58,10 +56,10 @@
                 {{/isMarkedForRemoval}}
             {{/failedToStart}}
             {{#isMarkedForRemoval}}
-                {{Strings.MARKED_FOR_REMOVAL}} (<a class="undo-remove" data-extension-id="{{metadata.name}}">{{Strings.UNDO_REMOVE}}</a>)
+                {{Strings.MARKED_FOR_REMOVAL}} (<a class="undo-remove" data-extension-id="{{metadata.name}}" href="#">{{Strings.UNDO_REMOVE}}</a>)
             {{/isMarkedForRemoval}}
             {{#isMarkedForUpdate}}
-                {{Strings.MARKED_FOR_UPDATE}} (<a class="undo-update" data-extension-id="{{metadata.name}}">{{Strings.UNDO_UPDATE}}</a>)
+                {{Strings.MARKED_FOR_UPDATE}} (<a class="undo-update" data-extension-id="{{metadata.name}}" href="#">{{Strings.UNDO_UPDATE}}</a>)
             {{/isMarkedForUpdate}}
         {{/isInstalled}}
     </td>

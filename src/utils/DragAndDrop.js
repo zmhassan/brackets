@@ -121,7 +121,7 @@ define(function (require, exports, module) {
                 if (errorFiles.length > 0) {
                     var message = Strings.ERROR_OPENING_FILES;
                     
-                    message += "<ul>";
+                    message += "<ul class='dialog-list'>";
                     errorFiles.forEach(function (file) {
                         message += "<li><span class='dialog-filename'>" +
                             StringUtils.breakableUrl(ProjectManager.makeProjectRelativeIfPossible(file)) +
@@ -138,6 +138,8 @@ define(function (require, exports, module) {
             });
     }
     
+    CommandManager.register(Strings.CMD_OPEN_DROPPED_FILES, Commands.FILE_OPEN_DROPPED_FILES, openDroppedFiles);
+
     // Export public API
     exports.isValidDrop         = isValidDrop;
     exports.openDroppedFiles    = openDroppedFiles;

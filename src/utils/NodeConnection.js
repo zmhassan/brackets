@@ -202,7 +202,11 @@ define(function (require, exports, module) {
     };
     
     /**
-     * Connect to the node server
+     * Connect to the node server. After connecting, the NodeConnection
+     * object will trigger a "close" event when the underlying socket
+     * is closed. If the connection is set to autoReconnect, then the
+     * event will also include a jQuery promise for the connection.
+     * 
      * @param {boolean} autoReconnect Whether to automatically try to
      *    reconnect to the server if the connection succeeds and then
      *    later disconnects. Note if this connection fails initially, the
@@ -224,9 +228,11 @@ define(function (require, exports, module) {
             function success() {
                 self._ws.onclose = function () {
                     if (self._autoReconnect) {
-                        self.connect(true);
+                        var $promise = self.connect(true);
+                        $(self).triggerHandler("close", [$promise]);
                     } else {
                         self._cleanup();
+                        $(self).triggerHandler("close");
                     }
                 };
                 deferred.resolve();
@@ -341,8 +347,8 @@ define(function (require, exports, module) {
                     // if the load succeeded, we wait for the API refresh to
                     // resolve the deferred.
                 },
-                function () { // command call failed
-                    deferred.reject("Unable to load one of the modules: " + pathArray);
+                function (reason) { // command call failed
+                    deferred.reject("Unable to load one of the modules: " + pathArray + (reason ? ", reason: " + reason : ""));
                 }
             );
 

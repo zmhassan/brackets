@@ -34,11 +34,12 @@
 define(function (require, exports, module) {
     "use strict";
 
+    var _ = brackets.getModule("lodash");
+    
     var DocumentManager     = brackets.getModule("document/DocumentManager"),
         LanguageManager     = brackets.getModule("language/LanguageManager"),
         NativeFileSystem    = brackets.getModule("file/NativeFileSystem").NativeFileSystem,
         ProjectManager      = brackets.getModule("project/ProjectManager"),
-        CollectionUtils     = brackets.getModule("utils/CollectionUtils"),
         ExtensionUtils      = brackets.getModule("utils/ExtensionUtils"),
         FileUtils           = brackets.getModule("file/FileUtils"),
         FileIndexManager    = brackets.getModule("project/FileIndexManager"),
@@ -65,7 +66,7 @@ define(function (require, exports, module) {
     /**
      *  An array of library names that contain JavaScript builtins definitions.
      *
-     * @returns {Array.<string>} - array of library  names.
+     * @return {Array.<string>} - array of library  names.
      */
     function getBuiltins() {
         return builtinLibraryNames;
@@ -228,7 +229,7 @@ define(function (require, exports, module) {
      * Test if the directory should be excluded from analysis.
      *
      * @param {!string} path - full directory path.
-     * @returns {boolean} true if excluded, false otherwise.
+     * @return {boolean} true if excluded, false otherwise.
      */
     function isDirectoryExcluded(path) {
         var excludes = preferences.getExcludedDirectories();
@@ -238,7 +239,7 @@ define(function (require, exports, module) {
         }
 
         var testPath = ProjectManager.makeProjectRelativeIfPossible(path);
-        testPath = FileUtils.canonicalizeFolderPath(testPath);
+        testPath = FileUtils.stripTrailingSlash(testPath);
 
         return excludes.test(testPath);
     }
@@ -247,7 +248,7 @@ define(function (require, exports, module) {
      * Test if the file should be excluded from analysis.
      *
      * @param {!string} path - full directory path.
-     * @returns {boolean} true if excluded, false otherwise.
+     * @return {boolean} true if excluded, false otherwise.
      */
     function isFileExcluded(path) {
         var excludes = preferences.getExcludedFiles();
@@ -306,14 +307,14 @@ define(function (require, exports, module) {
         var requests,
             key = file + "@" + offset.line + "@" + offset.ch,
             $deferredRequest;
-        if (CollectionUtils.hasProperty(pendingTernRequests, key)) {
+        if (_.has(pendingTernRequests, key)) {
             requests = pendingTernRequests[key];
         } else {
             requests = {};
             pendingTernRequests[key] = requests;
         }
 
-        if (CollectionUtils.hasProperty(requests, type)) {
+        if (_.has(requests, type)) {
             $deferredRequest = requests[type];
         } else {
             requests[type] = $deferredRequest = $.Deferred();
@@ -330,7 +331,7 @@ define(function (require, exports, module) {
      */
     function getPendingRequest(file, offset, type) {
         var key = file + "@" + offset.line + "@" + offset.ch;
-        if (CollectionUtils.hasProperty(pendingTernRequests, key)) {
+        if (_.has(pendingTernRequests, key)) {
             var requests = pendingTernRequests[key],
                 requestType = requests[type];
 
@@ -497,7 +498,7 @@ define(function (require, exports, module) {
      *
      * @param {!Session} session - the current session
      * @param {{line: number, ch: number}} start - the starting position of the changes
-     * @returns {{type: string, name: string, offsetLines: number, text: string}}
+     * @return {{type: string, name: string, offsetLines: number, text: string}}
      */
     function getFragmentAround(session, start) {
         var minIndent = null,
@@ -566,9 +567,11 @@ define(function (require, exports, module) {
      * changes are reset.
      *
      * @param {!Session} session - the current session
-     * @returns {{type: string, name: {string}, offsetLines: {number}, text: {string}}
+     * @param {boolean=} preventPartialUpdates - if true, disallow partial updates.
+     * Optional, defaults to false.
+     * @return {{type: string, name: string, offsetLines: number, text: string}}
      */
-    function getFileInfo(session) {
+    function getFileInfo(session, preventPartialUpdates) {
         var start = session.getCursor(),
             end = start,
             document = session.editor.document,
@@ -584,7 +587,7 @@ define(function (require, exports, module) {
             result = {type: MessageIds.TERN_FILE_INFO_TYPE_EMPTY,
                 name: path,
                 text: ""};
-        } else if (session.editor.lineCount() > LARGE_LINE_COUNT &&
+        } else if (!preventPartialUpdates && session.editor.lineCount() > LARGE_LINE_COUNT &&
                 (documentChanges.to - documentChanges.from < LARGE_LINE_CHANGE) &&
                 documentChanges.from <= start.line &&
                 documentChanges.to > end.line) {
@@ -610,10 +613,16 @@ define(function (require, exports, module) {
      * and the text is empty.
      * @param {{line: number, ch: number}=} offset - the default offset (optional). Will
      * use the cursor if not provided.
-     * @returns {{line: number, ch: number}}
+     * @return {{line: number, ch: number}}
      */
     function getOffset(session, fileInfo, offset) {
-        var newOffset = offset || session.getCursor();
+        var newOffset;
+
+        if (offset) {
+            newOffset = {line: offset.line, ch: offset.ch};
+        } else {
+            newOffset = session.getCursor();
+        }
 
         if (fileInfo.type === MessageIds.TERN_FILE_INFO_TYPE_PART) {
             newOffset.line = Math.max(0, newOffset.line - fileInfo.offsetLines);
@@ -668,10 +677,13 @@ define(function (require, exports, module) {
             properties = response.properties,
             fnType  = response.fnType,
             type = response.type,
+            error = response.error,
             $deferredHints = getPendingRequest(file, offset, type);
         
         if ($deferredHints) {
-            if (completions) {
+            if (error) {
+                $deferredHints.reject();
+            } else if (completions) {
                 $deferredHints.resolveWith(null, [{completions: completions}]);
             } else if (properties) {
                 $deferredHints.resolveWith(null, [{properties: properties}]);
@@ -748,7 +760,7 @@ define(function (require, exports, module) {
          *  Determine whether the current set of files are using modules to pull in
          *  additional files.
          *
-         * @returns {boolean} - true if more files than the current directory have
+         * @return {boolean} - true if more files than the current directory have
          * been read in.
          */
         function usingModules() {
@@ -1010,7 +1022,7 @@ define(function (require, exports, module) {
                     }
                 }
     
-                dir = FileUtils.canonicalizeFolderPath(dir);
+                dir = FileUtils.stripTrailingSlash(dir);
                 forEachFileInDirectory(dir, doneCallback, fileCallback, directoryCallback);
             }
     
@@ -1088,7 +1100,7 @@ define(function (require, exports, module) {
          *  already been added to tern.
          *
          * @param {string} newFile - full path of new file being opened in the editor.
-         * @returns {boolean} - true if tern initialization should be skipped,
+         * @return {boolean} - true if tern initialization should be skipped,
          * false otherwise.
          */
         function canSkipTernInitialization(newFile) {
@@ -1268,6 +1280,33 @@ define(function (require, exports, module) {
     }
 
     /**
+     * Request a parameter hint from Tern.
+     *
+     * @param {Session} session - the active hinting session
+     * @param {{line: number, ch: number}} functionOffset - the offset of the function call.
+     * @return {jQuery.Promise} - The promise will not complete until the
+     *      hint has completed.
+     */
+    function requestParameterHint(session, functionOffset) {
+        var $deferredHints = $.Deferred(),
+            fileInfo = getFileInfo(session, true),
+            offset = getOffset(session, fileInfo, functionOffset),
+            fnTypePromise = getTernFunctionType(fileInfo, offset);
+
+        $.when(fnTypePromise).done(
+            function (fnType) {
+                session.setFnType(fnType);
+                session.setFunctionCallPos(functionOffset);
+                $deferredHints.resolveWith(null, [fnType]);
+            }
+        ).fail(function () {
+            $deferredHints.reject();
+        });
+
+        return $deferredHints.promise();
+    }
+
+    /**
      * Request hints from Tern.
      *
      * Note that successive calls to getScope may return the same objects, so
@@ -1284,26 +1323,15 @@ define(function (require, exports, module) {
     function requestHints(session, document) {
         var $deferredHints = $.Deferred(),
             hintPromise,
-            fnTypePromise,
             sessionType = session.getType(),
             fileInfo = getFileInfo(session),
-            offset = getOffset(session, fileInfo,
-                            sessionType.showFunctionType ? sessionType.functionCallPos : null);
+            offset = getOffset(session, fileInfo, null);
 
         maybeReset(session, document);
 
         hintPromise = getTernHints(fileInfo, offset, sessionType.property);
 
-        if (sessionType.showFunctionType) {
-            // Show function sig
-            fnTypePromise = getTernFunctionType(fileInfo, offset);
-        } else {
-            var $fnTypeDeferred = $.Deferred();
-            fnTypePromise = $fnTypeDeferred.promise();
-            $fnTypeDeferred.resolveWith(null);
-        }
-
-        $.when(hintPromise, fnTypePromise).done(
+        $.when(hintPromise).done(
             function (completions, fnType) {
                 if (completions.completions) {
                     session.setTernHints(completions.completions);
@@ -1313,7 +1341,6 @@ define(function (require, exports, module) {
                     session.setGuesses(completions.properties);
                 }
 
-                session.setFnType(fnType);
                 $deferredHints.resolveWith(null);
             }
         ).fail(function () {
@@ -1408,6 +1435,7 @@ define(function (require, exports, module) {
     exports.handleFileChange = handleFileChange;
     exports.requestHints = requestHints;
     exports.requestJumptoDef = requestJumptoDef;
+    exports.requestParameterHint = requestParameterHint;
     exports.handleProjectClose = handleProjectClose;
     exports.handleProjectOpen = handleProjectOpen;
 

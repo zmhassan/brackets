@@ -121,6 +121,13 @@ define(function (require, exports, module) {
             });
         }
         
+        function checkActiveLineOption(editor, shouldBe) {
+            runs(function () {
+                expect(editor).toBeTruthy();
+                expect(editor._codeMirror.getOption("styleActiveLine")).toBe(shouldBe);
+            });
+        }
+        
         function checkLineNumbers(editor, shouldShow) {
             runs(function () {
                 var gutterElement, $lineNumbers;
@@ -212,7 +219,7 @@ define(function (require, exports, module) {
                 openInlineEditor();
                 
                 runs(function () {
-                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editors[0];
+                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editor;
                     checkLineWrapping(editor, {line: 0, ch: 0}, {line: 0, ch: 160}, true);
                 });
             });
@@ -254,7 +261,7 @@ define(function (require, exports, module) {
                 openInlineEditor();
                 
                 runs(function () {
-                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editors[0];
+                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editor;
                     checkActiveLine(editor, 0, false);
                 });
             });
@@ -267,6 +274,16 @@ define(function (require, exports, module) {
                 runs(function () {
                     var editor = EditorManager.getCurrentFullEditor();
                     checkActiveLine(editor, 0, true);
+                });
+            });
+            
+            it("should have the active line option be FALSE when the editor has a selection", function () {
+                openEditor(CSS_FILE);
+                
+                runs(function () {
+                    var editor = EditorManager.getCurrentFullEditor();
+                    editor.setSelection({line: 0, ch: 0}, {line: 0, ch: 1});
+                    checkActiveLineOption(editor, false);
                 });
             });
             
@@ -296,7 +313,7 @@ define(function (require, exports, module) {
                 openInlineEditor();
                 
                 runs(function () {
-                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editors[0];
+                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editor;
                     checkLineNumbers(editor, true);
                 });
             });
@@ -316,7 +333,7 @@ define(function (require, exports, module) {
                 openInlineEditor();
                 
                 runs(function () {
-                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editors[0];
+                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editor;
                     checkLineNumbers(editor, false);
                 });
             });
@@ -347,7 +364,7 @@ define(function (require, exports, module) {
                 openInlineEditor({line: 9, ch: 11});
                 
                 runs(function () {
-                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editors[0];
+                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editor;
                     checkCloseBraces(editor, {line: 1, ch: 15}, null, OPEN_BRACKET, ".shortLineClass { color: red; }");
                 });
             });
@@ -367,7 +384,7 @@ define(function (require, exports, module) {
                 openInlineEditor({line: 9, ch: 11});
                 
                 runs(function () {
-                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editors[0];
+                    var editor = EditorManager.getCurrentFullEditor().getInlineWidgets()[0].editor;
                     checkCloseBraces(editor, {line: 1, ch: 32}, null, OPEN_BRACKET, ".shortLineClass { color: red; }[]");
                 });
             });

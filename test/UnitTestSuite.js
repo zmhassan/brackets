@@ -34,6 +34,7 @@ define(function (require, exports, module) {
     require("spec/JSUtils-test");
     require("spec/Document-test");
     require("spec/DocumentCommandHandlers-test");
+    require("spec/DocumentManager-test");
     require("spec/Editor-test");
     require("spec/EditorCommandHandlers-test");
     require("spec/EditorOptionHandlers-test");
@@ -46,6 +47,8 @@ define(function (require, exports, module) {
     require("spec/FileUtils-test");
     require("spec/FindReplace-test");
     require("spec/HTMLInstrumentation-test");
+    require("spec/HTMLSimpleDOM-test");
+    require("spec/HTMLTokenizer-test");
     require("spec/InlineEditorProviders-test");
     require("spec/InstallExtensionDialog-test");
     require("spec/KeyBindingManager-test");
@@ -60,7 +63,10 @@ define(function (require, exports, module) {
     require("spec/PreferencesManager-test");
     require("spec/ProjectManager-test");
     require("spec/QuickOpen-test");
+    require("spec/RemoteFunctions-test");
     require("spec/StringMatch-test");
+    require("spec/StringUtils-test");
+    require("spec/TextRange-test");
     require("spec/UpdateNotification-test");
     require("spec/ViewCommandHandlers-test");
     require("spec/ViewUtils-test");

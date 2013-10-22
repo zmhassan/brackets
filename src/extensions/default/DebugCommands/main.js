@@ -28,6 +28,8 @@
 define(function (require, exports, module) {
     "use strict";
     
+    var _ = brackets.getModule("lodash");
+    
     var Commands               = brackets.getModule("command/Commands"),
         CommandManager         = brackets.getModule("command/CommandManager"),
         KeyBindingManager      = brackets.getModule("command/KeyBindingManager"),
@@ -38,7 +40,6 @@ define(function (require, exports, module) {
         ProjectManager         = brackets.getModule("project/ProjectManager"),
         PerfUtils              = brackets.getModule("utils/PerfUtils"),
         NativeApp              = brackets.getModule("utils/NativeApp"),
-        CollectionUtils        = brackets.getModule("utils/CollectionUtils"),
         StringUtils            = brackets.getModule("utils/StringUtils"),
         Dialogs                = brackets.getModule("widgets/Dialogs"),
         Strings                = brackets.getModule("strings"),
@@ -100,7 +101,7 @@ define(function (require, exports, module) {
         var getValue = function (entry) {
             // entry is either an Array or a number
             if (Array.isArray(entry)) {
-                // For Array of values, return: minimum/average/maximum/last
+                // For Array of values, return: minimum/average(count)/maximum/last
                 var i, e, avg, sum = 0, min = Number.MAX_VALUE, max = 0;
                 
                 for (i = 0; i < entry.length; i++) {
@@ -109,15 +110,15 @@ define(function (require, exports, module) {
                     sum += e;
                     max = Math.max(max, e);
                 }
-                avg = Math.round(sum / entry.length);
-                return String(min) + "/" + String(avg) + "/" + String(max) + "/" + String(e);
+                avg = Math.round(sum * 10 / entry.length) / 10; // tenth of a millisecond
+                return String(min) + "/" + String(avg) + "(" + entry.length + ")/" + String(max) + "/" + String(e);
             } else {
                 return entry;
             }
         };
         
         var perfData = PerfUtils.getData();
-        CollectionUtils.forEach(perfData, function (value, testName) {
+        _.forEach(perfData, function (value, testName) {
             templateVars.perfData.push({
                 testName: StringUtils.breakableUrl(testName),
                 value:    getValue(value)
@@ -151,7 +152,7 @@ define(function (require, exports, module) {
                 
                 function setLanguage(event) {
                     locale = $select.val();
-                    $submit.prop("disabled", false);
+                    $submit.prop("disabled", locale === (curLocale || ""));
                 }
                 
                 // returns the localized label for the given locale

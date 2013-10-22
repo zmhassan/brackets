@@ -241,7 +241,7 @@ define(function (require, exports, module) {
                 
                 runs(function () {
                     var inlineWidget = EditorManager.getCurrentFullEditor().getInlineWidgets()[0];
-                    var inlinePos = inlineWidget.editors[0].getCursorPos();
+                    var inlinePos = inlineWidget.editor.getCursorPos();
                     
                     // verify cursor position in inline editor
                     expect(inlinePos).toEqual(this.infos["test1inline.js"].offsets[0]);
@@ -253,7 +253,7 @@ define(function (require, exports, module) {
                 
                 runs(function () {
                     var inlineWidget = EditorManager.getCurrentFullEditor().getInlineWidgets()[0];
-                    var inlinePos = inlineWidget.editors[0].getCursorPos();
+                    var inlinePos = inlineWidget.editor.getCursorPos();
                     
                     // verify cursor position in inline editor
                     expect(inlinePos).toEqual(this.infos["test1inline.js"].offsets[1]);
@@ -265,7 +265,7 @@ define(function (require, exports, module) {
                 
                 runs(function () {
                     var inlineWidget = EditorManager.getCurrentFullEditor().getInlineWidgets()[0];
-                    var inlinePos = inlineWidget.editors[0].getCursorPos();
+                    var inlinePos = inlineWidget.editor.getCursorPos();
                     
                     // verify cursor position in inline editor
                     expect(inlinePos).toEqual(this.infos["test1inline.js"].offsets[2]);
@@ -273,7 +273,8 @@ define(function (require, exports, module) {
             });
 
             describe("Code hints tests within quick edit window ", function () {
-                var JSCodeHints;
+                var JSCodeHints,
+                    ParameterHintManager;
 
                 /*
                  * Ask provider for hints at current cursor position; expect it to
@@ -335,12 +336,82 @@ define(function (require, exports, module) {
                  */
                 function hintsPresentExact(hintObj, expectedHints) {
                     _waitForHints(hintObj, function (hintList) {
-                        expect(hintList).not.toBeNull();
+                        expect(hintList).toBeTruthy();
                         expect(hintList.length).toBe(expectedHints.length);
                         expectedHints.forEach(function (expectedHint, index) {
                             expect(hintList[index].data("token").value).toBe(expectedHint);
                         });
                     });
+                }
+
+                /*
+                 * Wait for a hint response object to resolve, then apply a callback
+                 * to the result
+                 *
+                 * @param {Object + jQuery.Deferred} hintObj - a hint response object,
+                 *      possibly deferred
+                 * @param {Function} callback - the callback to apply to the resolved
+                 *      hint response object
+                 */
+                function _waitForParameterHint(hintObj, callback) {
+                    var complete = false,
+                        hint = null;
+        
+                    hintObj.done(function () {
+                        hint = JSCodeHints.getSession().getParameterHint();
+                        complete = true;
+                    });
+        
+                    waitsFor(function () {
+                        return complete;
+                    }, "Expected parameter hint did not resolve", 3000);
+        
+                    runs(function () { callback(hint); });
+                }
+        
+                /**
+                 * Show a function hint based on the code at the cursor. Verify the
+                 * hint matches the passed in value.
+                 *
+                 * @param {Array<{name: string, type: string, isOptional: boolean}>}
+                 * expectedParams - array of records, where each element of the array
+                 * describes a function parameter. If null, then no hint is expected.
+                 * @param {number} expectedParameter - the parameter at cursor.
+                 */
+                function expectParameterHint(expectedParams, expectedParameter) {
+                    var request = ParameterHintManager.popUpHint();
+                    if (expectedParams === null) {
+                        expect(request).toBe(null);
+                        return;
+                    }
+        
+                    function expectHint(hint) {
+                        var params = hint.parameters,
+                            n = params.length,
+                            i;
+        
+                        // compare params to expected params
+                        expect(params.length).toBe(expectedParams.length);
+                        expect(hint.currentIndex).toBe(expectedParameter);
+        
+                        for (i = 0; i < n; i++) {
+        
+                            expect(params[i].name).toBe(expectedParams[i].name);
+                            expect(params[i].type).toBe(expectedParams[i].type);
+                            if (params[i].isOptional) {
+                                expect(expectedParams[i].isOptional).toBeTruthy();
+                            } else {
+                                expect(expectedParams[i].isOptional).toBeFalsy();
+                            }
+                        }
+        
+                    }
+        
+                    if (request) {
+                        _waitForParameterHint(request, expectHint);
+                    } else {
+                        expectHint(JSCodeHints.getSession().getParameterHint());
+                    }
                 }
 
                 /**
@@ -390,6 +461,7 @@ define(function (require, exports, module) {
                     var extensionRequire = testWindow.brackets.getModule("utils/ExtensionLoader").
                                 getRequireContextForExtension("JavaScriptCodeHints");
                     JSCodeHints = extensionRequire("main");
+                    ParameterHintManager = extensionRequire("ParameterHintManager");
                 }
 
                 beforeEach(function () {
@@ -399,6 +471,7 @@ define(function (require, exports, module) {
                 
                 afterEach(function () {
                     JSCodeHints = null;
+                    ParameterHintManager = null;
                 });
 
                 it("should see code hint lists in quick editor", function () {
@@ -414,9 +487,7 @@ define(function (require, exports, module) {
                     runs(function () {
                         testEditor = EditorManager.getActiveEditor();
                         testEditor.setCursorPos(testPos);
-                        var hintObj = expectHints(JSCodeHints.jsHintProvider);
-                        hintsPresentExact(hintObj, ["getMonthName(mo: number) -> string"]);
-
+                        expectParameterHint([{name: "mo", type: "Number"}], 0);
                     });
                 });
 

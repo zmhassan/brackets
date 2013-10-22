@@ -33,6 +33,8 @@ define(function (require, exports, module) {
     
     require("thirdparty/jquery.mockjax.js");
     
+    var _ = require("lodash");
+    
     var ExtensionManager          = require("extensibility/ExtensionManager"),
         ExtensionManagerView      = require("extensibility/ExtensionManagerView").ExtensionManagerView,
         ExtensionManagerViewModel = require("extensibility/ExtensionManagerViewModel"),
@@ -43,7 +45,6 @@ define(function (require, exports, module) {
         NativeFileSystem          = require("file/NativeFileSystem").NativeFileSystem,
         NativeFileError           = require("file/NativeFileError"),
         SpecRunnerUtils           = require("spec/SpecRunnerUtils"),
-        CollectionUtils           = require("utils/CollectionUtils"),
         NativeApp                 = require("utils/NativeApp"),
         Dialogs                   = require("widgets/Dialogs"),
         CommandManager            = require("command/CommandManager"),
@@ -619,6 +620,7 @@ define(function (require, exports, module) {
                     model = new ModelClass();
                     modelDisposed = false;
                     waitsForDone(view.initialize(model), "view initializing");
+                    view.$el.appendTo(document.body);
                 });
                 runs(function () {
                     spyOn(view.model, "dispose").andCallThrough();
@@ -650,8 +652,10 @@ define(function (require, exports, module) {
                 
             
             afterEach(function () {
-                view = null;
-                
+                if (view) {
+                    view.$el.remove();
+                    view = null;
+                }
                 if (model) {
                     model.dispose();
                 }
@@ -661,7 +665,7 @@ define(function (require, exports, module) {
                 it("should populate itself with registry entries and display their fields when created", function () {
                     setupViewWithMockData(ExtensionManagerViewModel.RegistryViewModel);
                     runs(function () {
-                        CollectionUtils.forEach(mockRegistry, function (item) {
+                        _.forEach(mockRegistry, function (item) {
                             // Should show the title if specified, otherwise the bare name.
                             if (item.metadata.title) {
                                 expect(view).toHaveText(item.metadata.title);
@@ -690,11 +694,6 @@ define(function (require, exports, module) {
                                     });
                                 }
                             });
-                            
-                            // Owner--should show the parts, but might format them separately
-                            item.owner.split(":").forEach(function (part) {
-                                expect(view).toHaveText(part);
-                            });
                         });
                     });
                 });
@@ -704,12 +703,10 @@ define(function (require, exports, module) {
                     setupViewWithMockData(ExtensionManagerViewModel.InstalledViewModel);
                     runs(function () {
                         console.log(view);
-                        CollectionUtils.forEach(JSON.parse(mockExtensionList), function (item) {
+                        _.forEach(JSON.parse(mockExtensionList), function (item) {
                             if (item.installInfo && item.registryInfo) {
-                                // Owner--should show the parts, but might format them separately
-                                item.registryInfo.owner.split(":").forEach(function (part) {
-                                    expect(view).toHaveText(part);
-                                });
+                                // Owner--should show only the owner name, not the authenticator
+                                expect(view).toHaveText(item.registryInfo.owner.split(":")[1]);
                             }
                         });
                     });
@@ -718,7 +715,7 @@ define(function (require, exports, module) {
                 it("should show an install button for each item", function () {
                     setupViewWithMockData(ExtensionManagerViewModel.RegistryViewModel);
                     runs(function () {
-                        CollectionUtils.forEach(mockRegistry, function (item) {
+                        _.forEach(mockRegistry, function (item) {
                             var $button = $("button.install[data-extension-id=" + item.metadata.name + "]", view.$el);
                             expect($button.length).toBe(1);
                         });
@@ -729,7 +726,7 @@ define(function (require, exports, module) {
                     mockLoadExtensions(["user/mock-extension-3", "user/mock-extension-4"]);
                     setupViewWithMockData(ExtensionManagerViewModel.RegistryViewModel);
                     runs(function () {
-                        CollectionUtils.forEach(mockRegistry, function (item) {
+                        _.forEach(mockRegistry, function (item) {
                             var $button = $("button.install[data-extension-id=" + item.metadata.name + "]", view.$el);
                             if (item.metadata.name === "mock-extension-3" || item.metadata.name === "mock-extension-4") {
                                 expect($button.prop("disabled")).toBeTruthy();
@@ -834,7 +831,10 @@ define(function (require, exports, module) {
                     runs(function () {
                         var origHref = window.location.href;
                         spyOn(NativeApp, "openURLInDefaultBrowser");
-                        $("a", view.$el).first().click();
+                        
+                        var event = new window.Event("click", { bubbles: false, cancelable: true });
+                        document.querySelector("a[href='https://github.com/someuser']").dispatchEvent(event);
+                        
                         expect(NativeApp.openURLInDefaultBrowser).toHaveBeenCalledWith("https://github.com/someuser");
                         expect(window.location.href).toBe(origHref);
                     });
@@ -868,7 +868,7 @@ define(function (require, exports, module) {
                     runs(function () {
                         expect($(".empty-message", view.$el).css("display")).toBe("none");
                         expect($("table", view.$el).css("display")).not.toBe("none");
-                        CollectionUtils.forEach(mockRegistry, function (item) {
+                        _.forEach(mockRegistry, function (item) {
                             var $button = $("button.remove[data-extension-id=" + item.metadata.name + "]", view.$el);
                             if (item.metadata.name === "mock-extension-3" ||
                                     item.metadata.name === "mock-extension-4" ||

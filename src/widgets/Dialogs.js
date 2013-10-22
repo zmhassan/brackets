@@ -1,24 +1,24 @@
 /*
  * Copyright (c) 2012 Adobe Systems Incorporated. All rights reserved.
- *  
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"), 
- * to deal in the Software without restriction, including without limitation 
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, 
- * and/or sell copies of the Software, and to permit persons to whom the 
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- *  
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- *  
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- * 
+ *
  */
 
 
@@ -57,35 +57,87 @@ define(function (require, exports, module) {
         DIALOG_BTN_CLASS_NORMAL     = "",
         DIALOG_BTN_CLASS_LEFT       = "left";
     
+    /** @type {number} The z-index used for the dialogs. Each new dialog increase this number by 2 */
+    var zIndex = 1050;
 
-    function _dismissDialog(dlg, buttonId) {
-        dlg.data("buttonId", buttonId);
-        $(".clickable-link", dlg).off("click");
-        dlg.modal("hide");
-    }
-    
-    function _hasButton(dlg, buttonId) {
-        return (dlg.find("[data-button-id='" + buttonId + "']").length > 0);
+    /**
+     * @private
+     * Dismises a modal dialog
+     * @param {$.Element} $dlg
+     * @param {string} buttonId
+     */
+    function _dismissDialog($dlg, buttonId) {
+        $dlg.data("buttonId", buttonId);
+        $dlg.modal("hide");
+        $(".modal-wrapper:last").remove();
     }
 
+    /**
+     * @private
+     * Returns true if the modal dialog has a button with the given ID
+     * @param {$.Element} $dlg
+     * @param {string} buttonId
+     * @return {boolean}
+     */
+    function _hasButton($dlg, buttonId) {
+        return ($dlg.find("[data-button-id='" + buttonId + "']").length > 0);
+    }
+
+
+    /**
+     * @private
+     * Handles the use of Tab so that it stays inside the Dialog
+     * @param {$.Event} event
+     * @param {$.Element} $dlg
+     */
+    function _handleTab(event, $dlg) {
+        var $inputs = $(":input:enabled, a", $dlg).filter(":visible");
+
+        if ($(event.target).closest($dlg).length) {
+            // If it's the first or last tabbable element, focus the last/first element
+            if ((!event.shiftKey && event.target === $inputs[$inputs.length - 1]) ||
+                    (event.shiftKey && event.target === $inputs[0])) {
+                $inputs.filter(event.shiftKey ? ":last" : ":first").focus();
+                event.preventDefault();
+
+            // If there is no element to focus, don't let it focus outside of the dialog
+            } else if (!$inputs.length) {
+                event.preventDefault();
+            }
+
+        // If the focus left the dialog, focus the first element in the dialog
+        } else {
+            $inputs.first().focus();
+            event.preventDefault();
+        }
+    }
+
+
+    /**
+     * Handles the keyDown event for the dialogs
+     * @param {$.Event} e
+     * @param {boolean} autoDismiss
+     * @return {boolean}
+     */
     var _keydownHook = function (e, autoDismiss) {
-        var primaryBtn = this.find(".primary"),
-            buttonId = null,
-            which = String.fromCharCode(e.which);
+        var $primaryBtn = this.find(".primary"),
+            buttonId    = null,
+            which       = String.fromCharCode(e.which);
         
         // There might be a textfield in the dialog's UI; don't want to mistake normal typing for dialog dismissal
-        var inFormField = ($(e.target).filter(":input").length > 0),
-            inTextArea = (e.target.tagName === "TEXTAREA"),
-            inTypingField = inTextArea || ($(e.target).filter(":text,:password").length > 0);
+        var inTextArea    = (e.target.tagName === "TEXTAREA"),
+            inTypingField = inTextArea || ($(e.target).filter(":text, :password").length > 0);
         
-        if (e.which === KeyEvent.DOM_VK_ESCAPE) {
+        if (e.which === KeyEvent.DOM_VK_TAB) {
+            _handleTab(e, this);
+        } else if (e.which === KeyEvent.DOM_VK_ESCAPE) {
             buttonId = DIALOG_BTN_CANCEL;
         } else if (e.which === KeyEvent.DOM_VK_RETURN && !inTextArea) {  // enter key in single-line text input still dismisses
             // Click primary button
-            primaryBtn.click();
+            $primaryBtn.click();
         } else if (e.which === KeyEvent.DOM_VK_SPACE) {
-            // Space bar on focused button
-            this.find(".dialog-button:focus").click();
+            // Space bar on focused button or link
+            this.find(".dialog-button:focus, a:focus").click();
         } else if (brackets.platform === "mac") {
             // CMD+D Don't Save
             if (e.metaKey && (which === "D")) {
@@ -107,13 +159,6 @@ define(function (require, exports, module) {
         
         if (autoDismiss && buttonId) {
             _dismissDialog(this, buttonId);
-        } else if (!($.contains(this.get(0), e.target)) || !inFormField) {
-            // Stop the event if the target is not inside the dialog
-            // or if the target is not a form element. (We don't want to use
-            // "inTypingField" here because we want the TAB key to work on
-            // non-text form elements.)
-            e.stopPropagation();
-            e.preventDefault();
         }
         
         // Stop any other global hooks from processing the event (but
@@ -179,22 +224,16 @@ define(function (require, exports, module) {
             autoDismiss = true;
         }
         
-        var result = $.Deferred(),
-            promise = result.promise();
+        $("body").append("<div class='modal-wrapper'><div class='modal-inner-wrapper'></div></div>");
         
-        var $dlg = $(template)
-            .addClass("instance")
-            .appendTo(window.document.body);
+        var result  = $.Deferred(),
+            promise = result.promise(),
+            $dlg    = $(template)
+                .addClass("instance")
+                .appendTo(".modal-inner-wrapper:last");
         
         // Save the dialog promise for unit tests
         $dlg.data("promise", promise);
-
-        $(".clickable-link", $dlg).on("click", function _handleLink(e) {
-            // Links use data-href (not href) attribute so Brackets itself doesn't redirect
-            if (e.currentTarget.dataset && e.currentTarget.dataset.href) {
-                NativeApp.openURLInDefaultBrowser(e.currentTarget.dataset.href);
-            }
-        });
 
         var keydownHook = function (e) {
             return _keydownHook.call($dlg, e, autoDismiss);
@@ -216,6 +255,7 @@ define(function (require, exports, module) {
             
             // Remove the dialog instance from the DOM.
             $dlg.remove();
+            $(".modal-backdrop:last").addClass("last-backdrop");
 
             // Remove our global keydown handler.
             KeyBindingManager.removeGlobalKeydownHook(keydownHook);
@@ -237,14 +277,25 @@ define(function (require, exports, module) {
                 _dismissDialog($dlg, $(this).attr("data-button-id"));
             });
         }
-
+        
+        $(".last-backdrop").removeClass("last-backdrop");
+        
         // Run the dialog
-        $dlg.modal({
-            backdrop: "static",
-            show: true,
-            keyboard: false // handle the ESC key ourselves so we can deal with nested dialogs
-        });
-
+        $dlg
+            .modal({
+                backdrop: "static",
+                show:     true,
+                selector: ".modal-inner-wrapper:last",
+                keyboard: false // handle the ESC key ourselves so we can deal with nested dialogs
+            })
+            // Updates the z-index of the modal dialog and the backdrop
+            .css("z-index", zIndex + 1)
+            .next()
+            .css("z-index", zIndex)
+            .addClass("last-backdrop");
+        
+        zIndex += 2;
+        
         return (new Dialog($dlg, promise));
     }
     
@@ -274,14 +325,15 @@ define(function (require, exports, module) {
     }
     
     /**
-     * Immediately closes any dialog instances with the given class. The dialog callback for each instance will 
+     * Immediately closes any dialog instances with the given class. The dialog callback for each instance will
      * be called with the special buttonId DIALOG_CANCELED (note: callback is run asynchronously).
      * @param {string} dlgClass The class name identifier for the dialog.
+     * @param {string=} buttonId The button id to use when closing the dialog. Defaults to DIALOG_CANCELED
      */
-    function cancelModalDialogIfOpen(dlgClass) {
-        $("." + dlgClass + ".instance").each(function (index, dlg) {
-            if ($(dlg).is(":visible")) {   // Bootstrap breaks if try to hide dialog that's already hidden
-                _dismissDialog($(dlg), DIALOG_CANCELED);
+    function cancelModalDialogIfOpen(dlgClass, buttonId) {
+        $("." + dlgClass + ".instance").each(function () {
+            if ($(this).is(":visible")) {   // Bootstrap breaks if try to hide dialog that's already hidden
+                _dismissDialog($(this), buttonId || DIALOG_CANCELED);
             }
         });
     }

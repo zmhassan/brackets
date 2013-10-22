@@ -28,7 +28,8 @@
 require.config({
     paths: {
         "text"      : "thirdparty/text/text",
-        "i18n"      : "thirdparty/i18n/i18n"
+        "i18n"      : "thirdparty/i18n/i18n",
+        "lodash"    : "thirdparty/lodash.custom.min"
     },
     // Use custom brackets property until CEF sets the correct navigator.language
     // NOTE: When we change to navigator.language here, we also should change to
@@ -96,8 +97,11 @@ define(function (require, exports, module) {
         NodeConnection          = require("utils/NodeConnection"),
         ExtensionUtils          = require("utils/ExtensionUtils"),
         DragAndDrop             = require("utils/DragAndDrop"),
-        ColorUtils              = require("utils/ColorUtils");
-            
+        ColorUtils              = require("utils/ColorUtils"),
+        CodeInspection          = require("language/CodeInspection"),
+        NativeApp               = require("utils/NativeApp"),
+        _                       = require("lodash");
+        
     // Load modules that self-register and just need to get included in the main project
     require("command/DefaultMenus");
     require("document/ChangedDocumentTracker");
@@ -143,16 +147,21 @@ define(function (require, exports, module) {
             KeyBindingManager       : KeyBindingManager,
             CodeHintManager         : CodeHintManager,
             Dialogs                 : Dialogs,
+            DefaultDialogs          : DefaultDialogs,
+            CodeInspection          : CodeInspection,
             CSSUtils                : require("language/CSSUtils"),
             LiveDevelopment         : require("LiveDevelopment/LiveDevelopment"),
             LiveDevServerManager    : require("LiveDevelopment/LiveDevServerManager"),
             DOMAgent                : require("LiveDevelopment/Agents/DOMAgent"),
             Inspector               : require("LiveDevelopment/Inspector/Inspector"),
-            NativeApp               : require("utils/NativeApp"),
+            NativeApp               : NativeApp,
             ExtensionLoader         : ExtensionLoader,
             ExtensionUtils          : ExtensionUtils,
             UpdateNotification      : require("utils/UpdateNotification"),
             InstallExtensionDialog  : require("extensibility/InstallExtensionDialog"),
+            RemoteAgent             : require("LiveDevelopment/Agents/RemoteAgent"),
+            HTMLInstrumentation     : require("language/HTMLInstrumentation"),
+            MultiRangeInlineEditor  : require("editor/MultiRangeInlineEditor").MultiRangeInlineEditor,
             doneLoading             : false
         };
 
@@ -194,7 +203,8 @@ define(function (require, exports, module) {
         LanguageManager.ready.always(function () {
             // Load all extensions. This promise will complete even if one or more
             // extensions fail to load.
-            var extensionLoaderPromise = ExtensionLoader.init(params.get("extensions"));
+            var extensionPathOverride = params.get("extensions");  // used by unit tests
+            var extensionLoaderPromise = ExtensionLoader.init(extensionPathOverride ? extensionPathOverride.split(",") : null);
             
             // Load the initial project after extensions have loaded
             extensionLoaderPromise.always(function () {
@@ -209,8 +219,6 @@ define(function (require, exports, module) {
                     // an old version that might not have set the "afterFirstLaunch" pref.)
                     var prefs = PreferencesManager.getPreferenceStorage(module),
                         deferred = new $.Deferred();
-                    //TODO: Remove preferences migration code
-                    PreferencesManager.handleClientIdChange(prefs, "com.adobe.brackets.startup");
                     
                     if (!params.get("skipSampleProjectLoad") && !prefs.getValue("afterFirstLaunch")) {
                         prefs.setValue("afterFirstLaunch", "true");
@@ -238,9 +246,7 @@ define(function (require, exports, module) {
                     // See if any startup files were passed to the application
                     if (brackets.app.getPendingFilesToOpen) {
                         brackets.app.getPendingFilesToOpen(function (err, files) {
-                            files.forEach(function (filename) {
-                                CommandManager.execute(Commands.FILE_OPEN, { fullPath: filename });
-                            });
+                            DragAndDrop.openDroppedFiles(files);
                         });
                     }
                 });
@@ -252,7 +258,11 @@ define(function (require, exports, module) {
             // check once a day, plus 2 minutes, 
             // as the check will skip if the last check was not -24h ago
             window.setInterval(UpdateNotification.checkForUpdate, 86520000);
-            UpdateNotification.checkForUpdate();
+            
+            // Check for updates on App Ready
+            AppInit.appReady(function () {
+                UpdateNotification.checkForUpdate();
+            });
         }
     }
     
@@ -271,8 +281,19 @@ define(function (require, exports, module) {
         }
 
         // Enable/Disable HTML Menus
-        if (brackets.platform !== "linux") {
+        if (brackets.nativeMenus) {
             $("body").addClass("has-appshell-menus");
+        } else {
+            // (issue #5310) workaround for bootstrap dropdown: prevent the menu item to grab
+            // the focus -- override jquery focus implementation for top-level menu items
+            (function () {
+                var defaultFocus = $.fn.focus;
+                $.fn.focus = function () {
+                    if (!this.hasClass("dropdown-toggle")) {
+                        return defaultFocus.apply(this, arguments);
+                    }
+                };
+            }());
         }
         
         // Localize MainViewHTML and inject into <BODY> tag
@@ -290,7 +311,9 @@ define(function (require, exports, module) {
                 if (event.originalEvent.dataTransfer.files) {
                     event.stopPropagation();
                     event.preventDefault();
-                    if (DragAndDrop.isValidDrop(event.originalEvent.dataTransfer.items)) {
+                    // Don't allow drag-and-drop of files/folders when a modal dialog is showing.
+                    if ($(".modal.instance").length === 0 &&
+                            DragAndDrop.isValidDrop(event.originalEvent.dataTransfer.items)) {
                         dropEffect = "copy";
                     }
                     event.originalEvent.dataTransfer.dropEffect = dropEffect;
@@ -346,9 +369,13 @@ define(function (require, exports, module) {
         // navigate. Also, a capture handler is more reliable than bubble.
         window.document.body.addEventListener("click", function (e) {
             // Check parents too, in case link has inline formatting tags
-            var node = e.target;
+            var node = e.target, url;
             while (node) {
                 if (node.tagName === "A") {
+                    url = node.getAttribute("href");
+                    if (url && !url.match(/^#/)) {
+                        NativeApp.openURLInDefaultBrowser(url);
+                    }
                     e.preventDefault();
                     break;
                 }

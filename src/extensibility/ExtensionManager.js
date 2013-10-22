@@ -47,8 +47,8 @@ define(function (require, exports, module) {
         Strings          = require("strings"),
         StringUtils      = require("utils/StringUtils");
     
-    // semver isn't a proper AMD module, so it will just load into the global namespace.
-    require("extensibility/node/node_modules/semver/semver");
+    // semver.browser is an AMD-compatible module
+    var semver = require("extensibility/node/node_modules/semver/semver.browser");
     
     /**
      * Extension status constants.

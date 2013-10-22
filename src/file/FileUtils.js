@@ -226,22 +226,55 @@ define(function (require, exports, module) {
     }
     
     /**
-     * Canonicalizes a folder path to not include a trailing slash.
+     * Removes the trailing slash from a path, if it has one.
+     * Warning: this differs from the format of most paths used in Brackets! Use paths ending in "/"
+     * normally, as this is the format used by DirectoryEntry.fullPath.
+     * 
      * @param {string} path
      * @return {string}
      */
-    function canonicalizeFolderPath(path) {
-        if (path.length > 0 && path[path.length - 1] === "/") {
+    function stripTrailingSlash(path) {
+        if (path && path[path.length - 1] === "/") {
             return path.slice(0, -1);
         } else {
             return path;
         }
     }
-
+    
+    /**
+     * Warning: Contrary to the name, this does NOT return a canonical path. The canonical format
+     * used by DirectoryEntry.fullPath actually DOES include the trailing "/"
+     * @deprecated
+     * 
+     * @param {string} path
+     * @return {string}
+     */
+    function canonicalizeFolderPath(path) {
+        console.error("Warning: FileUtils.canonicalizeFolderPath() is deprecated. Use paths ending in '/' if possible, like DirectoryEntry.fullPath");
+        return stripTrailingSlash(path);
+    }
+    
+    /**
+     * Get the name of a file or a directory, removing any preceding path.
+     * @param {string} fullPath full path to a file or directory
+     * @return {string} Returns the base name of a file or the name of a
+     * directory
+     */
+    function getBaseName(fullPath) {
+        var lastSlash = fullPath.lastIndexOf("/");
+        if (lastSlash === fullPath.length - 1) {  // directory: exclude trailing "/" too
+            return fullPath.slice(fullPath.lastIndexOf("/", fullPath.length - 2) + 1, -1);
+        } else {
+            return fullPath.slice(lastSlash + 1);
+        }
+    }
+    
     /**
      * Returns a native absolute path to the 'brackets' source directory.
      * Note that this only works when run in brackets/src/index.html, so it does
      * not work for unit tests (which is run from brackets/test/SpecRunner.html)
+     * 
+     * WARNING: unlike most paths in Brackets, this path EXCLUDES the trailing "/".
      * @return {string}
      */
     function getNativeBracketsDirectoryPath() {
@@ -254,6 +287,8 @@ define(function (require, exports, module) {
      * Given the module object passed to JS module define function,
      * convert the path to a native absolute path.
      * Returns a native absolute path to the module folder.
+     * 
+     * WARNING: unlike most paths in Brackets, this path EXCLUDES the trailing "/".
      * @return {string}
      */
     function getNativeModuleDirectoryPath(module) {
@@ -315,75 +350,15 @@ define(function (require, exports, module) {
     }
 
     /**
-     * Returns the file extension for a file name
-     * @param {string} fileName file name with extension or just a file extension
-     * @return {string} File extension if found, otherwise return the original file name
-     */
-    function _getFileExtension(fileName) {
-        var i = fileName.lastIndexOf("."),
-            ext = (i === -1 || i >= fileName.length - 1) ? fileName : fileName.substr(i + 1);
-
-        return ext;
-    }
-    
-    /** @const - hard-coded for now, but may want to make these preferences */
-    var _staticHtmlFileExts = ["htm", "html"],
-        _serverHtmlFileExts = ["php", "php3", "php4", "php5", "phtm", "phtml", "cfm", "cfml", "asp", "aspx", "jsp", "jspx", "shtm", "shtml"];
-
-    /**
-     * Determine if file extension is a static html file extension.
-     * @param {string} fileExt file name with extension or just a file extension
-     * @return {boolean} Returns true if fileExt is in the list
-     */
-    function isStaticHtmlFileExt(fileExt) {
-        if (!fileExt) {
-            return false;
-        }
-
-        return (_staticHtmlFileExts.indexOf(_getFileExtension(fileExt).toLowerCase()) !== -1);
-    }
-
-    /**
-     * Determine if file extension is a server html file extension.
-     * @param {string} fileExt file name with extension or just a file extension
-     * @return {boolean} Returns true if fileExt is in the list
-     */
-    function isServerHtmlFileExt(fileExt) {
-        if (!fileExt) {
-            return false;
-        }
-
-        return (_serverHtmlFileExts.indexOf(_getFileExtension(fileExt).toLowerCase()) !== -1);
-    }
-    
-    /**
-     * Get the parent directory of a file. If a directory is passed in the directory is returned.
-     * @param {string} fullPath full path to a file or directory
-     * @return {string} Returns the path to the parent directory of a file or the path of a directory
-     */
-    function getDirectoryPath(fullPath) {
-        return fullPath.substr(0, fullPath.lastIndexOf("/") + 1);
-    }
-
-    /**
-     * Get the base name of a file or a directory.
-     * @param {string} fullPath full path to a file or directory
-     * @return {string} Returns the base name of a file or the name of a
-     * directory
-     */
-    function getBaseName(fullPath) {
-        fullPath = canonicalizeFolderPath(fullPath);
-        return fullPath.substr(fullPath.lastIndexOf("/") + 1);
-    }
-
-    /**
-     * Get the filename extension.
+     * Get the file extension (excluding ".") given a path OR a bare filename.
+     * Returns "" for names with no extension. If the name starts with ".", the
+     * full remaining text is considered the extension.
      *
      * @param {string} fullPath full path to a file or directory
      * @return {string} Returns the extension of a filename or empty string if
      * the argument is a directory or a filename with no extension
      */
-    function getFilenameExtension(fullPath) {
+    function getFileExtension(fullPath) {
         var baseName = getBaseName(fullPath),
             idx      = baseName.lastIndexOf(".");
 
@@ -391,9 +366,63 @@ define(function (require, exports, module) {
             return "";
         }
 
-        return baseName.substr(idx);
+        return baseName.substr(idx + 1);
+    }
+
+    /**
+     * Similar to getFileExtension(), but includes the leading "." in the returned value.
+     * @deprecated Use getFileExtension() instead. This API will be removed soon.
+     */
+    function getFilenameExtension(fullPath) {
+        console.error("Warning: FileUtils.getFilenameExtension() is deprecated. Use FileUtils.getFileExtension() (which omits the '.') instead.");
+        
+        var ext = getFileExtension(fullPath);
+        if (ext !== "") {
+            ext = "." + ext;
+        }
+        return ext;
+    }
+
+    /** @const - hard-coded for now, but may want to make these preferences */
+    var _staticHtmlFileExts = ["htm", "html"],
+        _serverHtmlFileExts = ["php", "php3", "php4", "php5", "phtm", "phtml", "cfm", "cfml", "asp", "aspx", "jsp", "jspx", "shtm", "shtml"];
+
+    /**
+     * Determine if file extension is a static html file extension.
+     * @param {string} filePath could be a path, a file name or just a file extension
+     * @return {boolean} Returns true if fileExt is in the list
+     */
+    function isStaticHtmlFileExt(filePath) {
+        if (!filePath) {
+            return false;
+        }
+
+        return (_staticHtmlFileExts.indexOf(getFileExtension(filePath).toLowerCase()) !== -1);
+    }
+
+    /**
+     * Determine if file extension is a server html file extension.
+     * @param {string} filePath could be a path, a file name or just a file extension
+     * @return {boolean} Returns true if fileExt is in the list
+     */
+    function isServerHtmlFileExt(filePath) {
+        if (!filePath) {
+            return false;
+        }
+
+        return (_serverHtmlFileExts.indexOf(getFileExtension(filePath).toLowerCase()) !== -1);
     }
     
+    /**
+     * Get the parent directory of a file. If a directory is passed in the directory is returned.
+     * @param {string} fullPath full path to a file or directory
+     * @return {string} Returns the path to the parent directory of a file or the path of a directory,
+     *                  including trailing "/"
+     */
+    function getDirectoryPath(fullPath) {
+        return fullPath.substr(0, fullPath.lastIndexOf("/") + 1);
+    }
+
     /**
      * @private
      * Get the file name without the extension.
@@ -401,8 +430,8 @@ define(function (require, exports, module) {
      * @return {string} Returns the file name without the extension
      */
     function _getFilenameWithoutExtension(filename) {
-        var extension = getFilenameExtension(filename);
-        return extension ? filename.replace(new RegExp(extension + "$"), "") : filename;
+        var index = filename.lastIndexOf(".");
+        return index === -1 ? filename : filename.slice(0, index);
     }
     
     /**
@@ -414,8 +443,8 @@ define(function (require, exports, module) {
      * @return {number} The result of the local compare function
      */
     function compareFilenames(filename1, filename2, extFirst) {
-        var ext1   = getFilenameExtension(filename1),
-            ext2   = getFilenameExtension(filename2),
+        var ext1   = getFileExtension(filename1),
+            ext2   = getFileExtension(filename2),
             cmpExt = ext1.toLocaleLowerCase().localeCompare(ext2.toLocaleLowerCase(), undefined, {numeric: true}),
             cmpNames;
         
@@ -444,12 +473,14 @@ define(function (require, exports, module) {
     exports.getNativeBracketsDirectoryPath = getNativeBracketsDirectoryPath;
     exports.getNativeModuleDirectoryPath   = getNativeModuleDirectoryPath;
     exports.canonicalizeFolderPath         = canonicalizeFolderPath;
+    exports.stripTrailingSlash             = stripTrailingSlash;
     exports.isAffectedWhenRenaming         = isAffectedWhenRenaming;
     exports.updateFileEntryPath            = updateFileEntryPath;
     exports.isStaticHtmlFileExt            = isStaticHtmlFileExt;
     exports.isServerHtmlFileExt            = isServerHtmlFileExt;
     exports.getDirectoryPath               = getDirectoryPath;
     exports.getBaseName                    = getBaseName;
+    exports.getFileExtension               = getFileExtension;
     exports.getFilenameExtension           = getFilenameExtension;
     exports.compareFilenames               = compareFilenames;
 });

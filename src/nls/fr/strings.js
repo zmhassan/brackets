@@ -81,18 +81,19 @@ define({
 	"LIVE_DEVELOPMENT_RELAUNCH_TITLE": "Connexion au navigateur",
 	"LIVE_DEVELOPMENT_ERROR_MESSAGE": "Pour que le module Aperçu en direct puisse se connecter, vous devez relancer Chrome en activant la fonction de débogage à distance.<br /><br />Voulez-vous relancer Chrome et activer le débogage à distance ?",
 	"LIVE_DEV_LOADING_ERROR_MESSAGE": "Impossible de charger la page Live Development",
-	"LIVE_DEV_NEED_HTML_MESSAGE": "Ouvrez un fichier HTML pour lancer l’aperçu en direct.",
+	"LIVE_DEV_NEED_HTML_MESSAGE": "Ouvrez un fichier HTML ou vérifiez qu’il y a un fichier index.html dans votre projet pour pouvoir lancer l’aperçu en direct.",
 	"LIVE_DEV_NEED_BASEURL_MESSAGE": "Pour lancer l’Aperçu en direct avec un fichier de serveur, vous devez indiquer une URL de base pour ce projet.",
 	"LIVE_DEV_SERVER_NOT_READY_MESSAGE": "Une erreur s’est produite au démarrage du serveur HTTP pour les fichiers de développement en direct. Veuillez réessayer.",
 	"LIVE_DEVELOPMENT_INFO_TITLE": "Bienvenue dans le module Aperçu en direct !",
-	"LIVE_DEVELOPMENT_INFO_MESSAGE": "Le module Aperçu en direct connecte {APP_NAME} à votre navigateur. Il ouvre un aperçu de votre fichier HTML dans le navigateur, puis le met à jour instantanément dès que vous modifiez le code.<br /><br />Dans cette première version du logiciel {APP_NAME}, le module Aperçu en direct ne fonctionne qu’avec <strong>Google Chrome</strong> et affiche les mises à jour en direct, dès que vous modifiez des <strong>fichiers CSS</strong>. Les modifications apportées aux fichiers HTML et JavaScript sont automatiquement rechargées lorsque vous enregistrez.<br /><br />(Ce message ne s’affichera qu’une seule fois.)",
-	"LIVE_DEVELOPMENT_TROUBLESHOOTING": "Pour en savoir plus, reportez-vous à la rubrique <a class=\"clickable-link\" data-href=\"{0}\">Dépannage des erreurs de connexion Live Development</a>.",
+	"LIVE_DEVELOPMENT_INFO_MESSAGE": "Le module Aperçu en direct connecte {APP_NAME} à votre navigateur. Il ouvre un aperçu de votre fichier HTML dans le navigateur, puis le met à jour instantanément dès que vous modifiez le code.<br /><br />Dans cette première version du logiciel {APP_NAME}, le module Aperçu en direct ne fonctionne qu’avec <strong>Google Chrome</strong> et affiche les mises à jour en direct, dès que vous modifiez des <strong>fichiers CSS ou HTML</strong>. Les modifications apportées aux fichiers JavaScript sont automatiquement rechargées lorsque vous enregistrez.<br /><br />(Ce message ne s’affichera qu’une seule fois.)",
+	"LIVE_DEVELOPMENT_TROUBLESHOOTING": "Pour plus d’informations, consultez la page <a href='{0}' title='{0}'>Résolution des erreurs de connexion Live Development</a>.",
     
 	"LIVE_DEV_STATUS_TIP_NOT_CONNECTED": "Aperçu en direct",
 	"LIVE_DEV_STATUS_TIP_PROGRESS1": "Aperçu en direct : Connexion\u2026",
 	"LIVE_DEV_STATUS_TIP_PROGRESS2": "Aperçu en direct : Initialisation\u2026",
 	"LIVE_DEV_STATUS_TIP_CONNECTED": "Déconnecter le module Aperçu en direct",
-	"LIVE_DEV_STATUS_TIP_OUT_OF_SYNC": "Aperçu en direct : cliquez ici pour déconnecter (enregistrez le fichier pour lancer la mise à jour).",
+	"LIVE_DEV_STATUS_TIP_OUT_OF_SYNC": "Aperçu en direct (enregistrez le fichier pour actualiser)",
+	"LIVE_DEV_STATUS_TIP_SYNC_ERROR": "Aperçu en direct (échec de la mise à jour en raison d’une erreur de syntaxe)",
 
 	"LIVE_DEV_DETACHED_REPLACED_WITH_DEVTOOLS": "Aperçu en direct a été annulé car les outils de développeur du navigateur étaient ouverts",
 	"LIVE_DEV_DETACHED_TARGET_CLOSED": "Aperçu en direct a été annulé car la page était fermée dans le navigateur",
@@ -112,33 +113,44 @@ define({
     // Find, Replace, Find in Files
 	"SEARCH_REGEXP_INFO": "Utiliser la syntaxe /re/ pour la recherche regexp",
 	"FIND_RESULT_COUNT": "{0} résultats",
+	"FIND_RESULT_COUNT_SINGLE": "1 résultat",
+	"FIND_NO_RESULTS": "Aucun résultat",
 	"WITH": "Avec",
 	"BUTTON_YES": "Oui",
 	"BUTTON_NO": "Non",
+	"BUTTON_REPLACE_ALL": "Tout\u2026",
 	"BUTTON_STOP": "Arrêter",
+	"BUTTON_REPLACE": "Remplacer",
+            
+	"BUTTON_NEXT": "\u25B6",
+	"BUTTON_PREV": "\u25C0",
+	"BUTTON_NEXT_HINT": "Résultat suivant",
+	"BUTTON_PREV_HINT": "Résultat précédent",
 
 	"OPEN_FILE": "Ouvrir le fichier",
 	"SAVE_FILE_AS": "Enregistrer le fichier",
 	"CHOOSE_FOLDER": "Choisir un dossier",
 
 	"RELEASE_NOTES": "Notes de mise à jour",
-	"NO_UPDATE_TITLE": "Votre logiciel est à jour.",
+	"NO_UPDATE_TITLE": "Votre logiciel est à jour !",
 	"NO_UPDATE_MESSAGE": "Vous utilisez la dernière version de {APP_NAME}.",
-    
-	"FIND_IN_FILES_TITLE": "« {4} » a trouvé {5} &mdash; {0} {1} dans {2} {3}",
+
+	"FIND_REPLACE_TITLE_PART1": "Remplacer « ",
+	"FIND_REPLACE_TITLE_PART2": " » par « ",
+	"FIND_REPLACE_TITLE_PART3": " » &mdash; {2} {0} {1}",
+
+	"FIND_IN_FILES_TITLE_PART1": "« ",
+	"FIND_IN_FILES_TITLE_PART2": " » trouvé",
+	"FIND_IN_FILES_TITLE_PART3": "&mdash; {0} {1} {2} dans {3} {4}",
 	"FIND_IN_FILES_SCOPED": "dans <span class='dialog-filename'>{0}</span>",
 	"FIND_IN_FILES_NO_SCOPE": "dans le projet",
 	"FIND_IN_FILES_FILE": "fichier",
 	"FIND_IN_FILES_FILES": "fichiers",
 	"FIND_IN_FILES_MATCH": "résultat",
 	"FIND_IN_FILES_MATCHES": "résultats",
-	"FIND_IN_FILES_MORE_THAN": "Par-dessus ",
+	"FIND_IN_FILES_MORE_THAN": "Plus de ",
 	"FIND_IN_FILES_PAGING": "{0}&mdash;{1}",
-	"FIND_IN_FILES_LESS": " <a href='#' class='find-less'>Moins</a>",
-	"FIND_IN_FILES_MORE": " <a href='#' class='find-more'>Plus</a>",
-	"FIND_IN_FILES_FILE_PATH": "Fichier : <span class='dialog-filename'>{0}</span>",
-	"FIND_IN_FILES_LINE": "ligne : {0}",
-
+	"FIND_IN_FILES_FILE_PATH": "<span class='dialog-filename'>{0}</span> {2} <span class='dialog-path'>{1}</span>",
 	"ERROR_FETCHING_UPDATE_INFO_TITLE": "Erreur de récupération des informations de mise à jour",
 	"ERROR_FETCHING_UPDATE_INFO_MSG": "Un problème est survenu lors de la récupération des dernières informations de mise à jour sur le serveur. Vérifiez que vous êtes connecté à Internet et réessayez.",
 
@@ -168,11 +180,21 @@ define({
 	"STATUSBAR_INDENT_TOOLTIP_TABS": "Cliquez ici pour remplacer la mise en retrait par des tabulations.",
 	"STATUSBAR_INDENT_SIZE_TOOLTIP_SPACES": "Cliquez ici pour changer le nombre d’espaces utilisés lors de la mise en retrait.",
 	"STATUSBAR_INDENT_SIZE_TOOLTIP_TABS": "Cliquez ici pour modifier la largeur du caractère de tabulation.",
-	"STATUSBAR_SPACES": "Espaces",
-	"STATUSBAR_TAB_SIZE": "Taille de tabulation",
+	"STATUSBAR_SPACES": "Espaces :",
+	"STATUSBAR_TAB_SIZE": "Taille de tabulation :",
 	"STATUSBAR_LINE_COUNT_SINGULAR": "\u2014 {0} ligne",
 	"STATUSBAR_LINE_COUNT_PLURAL": "\u2014 {0} lignes",
 
+    // CodeInspection: errors/warnings
+	"ERRORS_PANEL_TITLE": "Erreurs {0}",
+	"SINGLE_ERROR": "1 erreur {0}",
+	"MULTIPLE_ERRORS": "{1} erreurs {0}",
+	"NO_ERRORS": "Aucune erreur {0} – félicitations !",
+	"LINT_DISABLED": "L’analyse lint est désactivée",
+	"NO_LINT_AVAILABLE": "Aucun programme lint disponible pour {0}",
+	"NOTHING_TO_LINT": "Rien à analyser",
+    
+    
     /**
      * Command Name Constants
      */
@@ -187,11 +209,14 @@ define({
 	"CMD_OPEN_FOLDER": "Ouvrir un dossier\u2026",
 	"CMD_FILE_CLOSE": "Fermer",
 	"CMD_FILE_CLOSE_ALL": "Tout fermer",
+	"CMD_FILE_CLOSE_LIST": "Fermer la liste",
+	"CMD_FILE_CLOSE_OTHERS": "Fermer tous les autres",
+	"CMD_FILE_CLOSE_ABOVE": "Fermer les autres au-dessus",
+	"CMD_FILE_CLOSE_BELOW": "Fermer les autres en dessous",
 	"CMD_FILE_SAVE": "Enregistrer",
 	"CMD_FILE_SAVE_ALL": "Enregistrer tout",
 	"CMD_FILE_SAVE_AS": "Enregistrer sous\u2026",
 	"CMD_LIVE_FILE_PREVIEW": "Aperçu en direct",
-	"CMD_LIVE_HIGHLIGHT": "Surlignement dans l’Aperçu en direct",
 	"CMD_PROJECT_SETTINGS": "Paramètres du projet\u2026",
 	"CMD_FILE_RENAME": "Renommer",
 	"CMD_FILE_DELETE": "Supprimer",
@@ -242,6 +267,8 @@ define({
 	"CMD_TOGGLE_LINE_NUMBERS": "Numéros de ligne",
 	"CMD_TOGGLE_ACTIVE_LINE": "Surligner la ligne active",
 	"CMD_TOGGLE_WORD_WRAP": "Renvoi à la ligne",
+	"CMD_LIVE_HIGHLIGHT": "Surlignement dans l’Aperçu en direct",
+	"CMD_VIEW_TOGGLE_INSPECTION": "Effectuer une analyse lint des fichiers à l’enregistrement",
 	"CMD_SORT_WORKINGSET_BY_ADDED": "Trier par date d’ajout",
 	"CMD_SORT_WORKINGSET_BY_NAME": "Trier par nom",
 	"CMD_SORT_WORKINGSET_BY_TYPE": "Trier par type",
@@ -252,10 +279,12 @@ define({
 	"CMD_QUICK_OPEN": "Ouverture rapide",
 	"CMD_GOTO_LINE": "Atteindre la ligne",
 	"CMD_GOTO_DEFINITION": "Accès rapide à la définition",
+	"CMD_GOTO_FIRST_PROBLEM": "Aller à la première erreur/au premier avertissement",
 	"CMD_TOGGLE_QUICK_EDIT": "Edition rapide",
 	"CMD_TOGGLE_QUICK_DOCS": "Documentation rapide",
 	"CMD_QUICK_EDIT_PREV_MATCH": "Correspondance précédente",
 	"CMD_QUICK_EDIT_NEXT_MATCH": "Correspondance suivante",
+	"CMD_CSS_QUICK_EDIT_NEW_RULE": "Nouvelle règle",
 	"CMD_NEXT_DOC": "Document suivant",
 	"CMD_PREV_DOC": "Document précédent",
 	"CMD_SHOW_IN_TREE": "Afficher dans l’arborescence de fichiers",
@@ -272,12 +301,6 @@ define({
 	"CMD_TWITTER": "{TWITTER_NAME} sur Twitter",
 	"CMD_ABOUT": "A propos de {APP_TITLE}",
 
-
-    // Special commands invoked by the native shell
-	"CMD_CLOSE_WINDOW": "Fermer la fenêtre",
-	"CMD_ABORT_QUIT": "Annuler la fermeture",
-	"CMD_BEFORE_MENUPOPUP": "Fenêtre avant le menu",
-
     // Strings for main-view.html
 	"EXPERIMENTAL_BUILD": "version expérimentale",
 	"DEVELOPMENT_BUILD": "version de développement",
@@ -293,11 +316,11 @@ define({
 	"ABOUT": "A propos",
 	"CLOSE": "Fermer",
 	"ABOUT_TEXT_LINE1": "Sprint {VERSION_MINOR} {BUILD_TYPE} {VERSION}",
-	"ABOUT_TEXT_LINE3": "Notices, terms and conditions pertaining to third party software are located at <a class=\"clickable-link\" data-href=\"{ADOBE_THIRD_PARTY}\">{ADOBE_THIRD_PARTY}</a> and incorporated by reference herein.",
-	"ABOUT_TEXT_LINE4": "La documentation et la source sont disponibles à l’adresse <a class=\"clickable-link\" data-href=\"https://github.com/adobe/brackets/\">https://github.com/adobe/brackets/</a>.",
+	"ABOUT_TEXT_LINE3": "Les mentions légales et conditions générales relatives aux logiciels tiers sont disponibles à l’adresse <a href='{ADOBE_THIRD_PARTY}'>{ADOBE_THIRD_PARTY}</a> et sont incluses dans le présent document à titre de référence.",
+	"ABOUT_TEXT_LINE4": "La documentation et le code source sont disponibles à l’adresse <a href='https://github.com/adobe/brackets/'>https://github.com/adobe/brackets/</a>",
 	"ABOUT_TEXT_LINE5": "Développé avec \u2764 et JavaScript par :",
 	"ABOUT_TEXT_LINE6": "De nombreux contributeurs (information indisponible pour le moment).",
-	"ABOUT_TEXT_WEB_PLATFORM_DOCS": "Web Platform Docs and the Web Platform graphical logo are licensed under a Creative Commons Attribution license, <a class=\"clickable-link\" data-href=\"{WEB_PLATFORM_DOCS_LICENSE}\">CC-BY 3.0 Unported</a>.",
+	"ABOUT_TEXT_WEB_PLATFORM_DOCS": "Web Platform Docs et le logo Web Platform font l’objet d’une licence Creative Commons Attribution, <a href='{WEB_PLATFORM_DOCS_LICENSE}'>CC-BY 3.0 Unported</a>.",
 	"UPDATE_NOTIFICATION_TOOLTIP": "Une nouvelle version de {APP_NAME} est disponible. Cliquez ici pour plus de détails.",
 	"UPDATE_AVAILABLE_TITLE": "Mise à jour disponible",
 	"UPDATE_MESSAGE": "Une nouvelle version de {APP_NAME} est disponible. Voici quelques-unes des nouvelles fonctionnalités proposées :",
@@ -305,11 +328,14 @@ define({
 	"PROJECT_SETTINGS_TITLE": "Paramètres de projet pour : {0}",
 	"PROJECT_SETTING_BASE_URL": "URL de base de l’Aperçu en direct ",
 	"PROJECT_SETTING_BASE_URL_HINT": "Serveur local : entrez une URL du type http://localhost:8000/",
-	"BASEURL_ERROR_INVALID_PROTOCOL": "Le protocole {0} n’est pas pris en charge par l’Aperçu en direct. Veuillez utiliser une adresse de type http ou https.",
+	"BASEURL_ERROR_INVALID_PROTOCOL": "Le protocole {0} n’est pas pris en charge par l’Aperçu en direct. Veuillez utiliser une adresse de type http: ou https: .",
 	"BASEURL_ERROR_SEARCH_DISALLOWED": "L’URL de base ne peut pas contenir de paramètres de recherche tels que \"{0}\".",
 	"BASEURL_ERROR_HASH_DISALLOWED": "L’URL de base ne peut pas contenir de signe dièse (\"{0}\").",
 	"BASEURL_ERROR_INVALID_CHAR": "Les caractères spéciaux tels que '{0}' doivent être codés en %.",
-	"BASEURL_ERROR_UNKOWN_ERROR": "Erreur inconnue lors de l’analyse de l’URL de base",
+	"BASEURL_ERROR_UNKNOWN_ERROR": "Erreur inconnue lors de l’analyse de l’URL de base",
+    
+    // CSS Quick Edit
+	"BUTTON_NEW_RULE": "Nouvelle règle",
     
     // Extension Management strings
 	"INSTALL": "Installer",
@@ -323,7 +349,7 @@ define({
 	"INSTALL_EXTENSION_LABEL": "URL de l’extension ",
 	"INSTALL_EXTENSION_HINT": "URL du fichier zip de l’extension ou du référentiel GitHub",
 	"INSTALLING_FROM": "Installation de l’extension depuis·{0}\u2026",
-	"INSTALL_SUCCEEDED": "Installation réussie.",
+	"INSTALL_SUCCEEDED": "Installation réussie !",
 	"INSTALL_FAILED": "Echec de l’installation.",
 	"CANCELING_INSTALL": "Annulation en cours\u2026",
 	"CANCELING_HUNG": "L’annulation de l’installation prend beaucoup de temps. Il est possible qu’une erreur interne se soit produite.",
@@ -388,12 +414,16 @@ define({
 	"EXTENSIONS_AVAILABLE_TITLE": "Disponibles",
 	"EXTENSIONS_UPDATES_TITLE": "Mises à jour",
     
+	"INLINE_EDITOR_NO_MATCHES": "Aucun résultat.",
+	"CSS_QUICK_EDIT_NO_MATCHES": "Aucune règle CSS existante ne correspond à votre sélection.<br> Cliquez sur « Nouvelle règle » pour en créer une.",
+	"CSS_QUICK_EDIT_NO_STYLESHEETS": "Votre projet ne contient aucune feuille de style.<br>Créez-en une pour pouvoir ajouter des règles CSS.",
+    
     /**
      * Unit names
      */
 
 	"UNIT_PIXELS": "pixels",
-    
+
     // extensions/default/DebugCommands
 	"DEBUG_MENU": "Déboguer",
 	"CMD_SHOW_DEV_TOOLS": "Afficher les outils de développement",
@@ -412,9 +442,7 @@ define({
 	"LANGUAGE_CANCEL": "Annuler",
 	"LANGUAGE_SYSTEM_DEFAULT": "Langue par défaut du système",
     
-    /**
-     * Locales
-     */
+    // Locales (used by Debug > Switch Language)
 	"LOCALE_CS": "Tchèque",
 	"LOCALE_DE": "Allemand",
 	"LOCALE_EN": "Anglais",
@@ -428,10 +456,15 @@ define({
 	"LOCALE_PT_BR": "Portugais (Brésil)",
 	"LOCALE_PT_PT": "Portugais",
 	"LOCALE_RU": "Russe",
+	"LOCALE_SK": "Slovaque",
 	"LOCALE_SV": "Suédois",
 	"LOCALE_TR": "Turc",
 	"LOCALE_ZH_CN": "Chinois (simplifié)",
 	"LOCALE_HU": "Hongrois",
+    
+    // extensions/default/InlineBezierCurveEditor
+	"INLINE_BEZIER_EDITOR_TIME": "Heure",
+	"INLINE_BEZIER_EDITOR_PROGRESSION": "Progression",
     
     // extensions/default/InlineColorEditor
 	"COLOR_EDITOR_CURRENT_COLOR_SWATCH_TIP": "Couleur actuelle",
@@ -444,18 +477,17 @@ define({
     
     // extensions/default/JavaScriptCodeHints
 	"CMD_JUMPTO_DEFINITION": "Accéder à la définition",
+	"CMD_SHOW_PARAMETER_HINT": "Afficher l’indicateur de paramètre",
+	"NO_ARGUMENTS": "<aucun paramètre>",
     
     // extensions/default/JSLint
-	"CMD_JSLINT": "Activer JSLint",
-	"CMD_JSLINT_FIRST_ERROR": "Aller à la première erreur JSLint",
-	"JSLINT_ERRORS": "Erreurs JSLint",
-	"JSLINT_ERROR_INFORMATION": "1 erreur JSLint",
-	"JSLINT_ERRORS_INFORMATION": "{0} erreurs JSLint",
-	"JSLINT_NO_ERRORS": "Aucune erreur JSLint - Félicitations !",
-	"JSLINT_DISABLED": "JSLint est désactivé ou ne fonctionne pas pour le fichier en cours.",
+	"JSLINT_NAME": "JSLint",
     
     // extensions/default/QuickView
 	"CMD_ENABLE_QUICK_VIEW": "Affichage rapide au survol",
+    
+    // extensions/default/RecentProjects
+	"CMD_TOGGLE_RECENT_PROJECTS": "Projets récents",
     
     // extensions/default/WebPlatformDocs
 	"DOCS_MORE_LINK": "En savoir plus"

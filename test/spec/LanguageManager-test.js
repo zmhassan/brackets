@@ -98,10 +98,10 @@ define(function (require, exports, module) {
                     coffee = LanguageManager.getLanguage("coffeescript");
                 
                 // check basic language support
-                expect(html).not.toBeNull();
-                expect(LanguageManager.getLanguage("css")).not.toBeNull();
-                expect(LanguageManager.getLanguage("javascript")).not.toBeNull();
-                expect(LanguageManager.getLanguage("json")).not.toBeNull();
+                expect(html).toBeTruthy();
+                expect(LanguageManager.getLanguage("css")).toBeTruthy();
+                expect(LanguageManager.getLanguage("javascript")).toBeTruthy();
+                expect(LanguageManager.getLanguage("json")).toBeTruthy();
                 
                 // check html mode
                 var def = {
@@ -132,7 +132,7 @@ define(function (require, exports, module) {
             it("should map identifiers to languages", function () {
                 var html = LanguageManager.getLanguage("html");
                 
-                expect(html).not.toBe(null);
+                expect(html).toBeTruthy();
                 expect(LanguageManager.getLanguage("DoesNotExist")).toBe(undefined);
             });
             
@@ -161,14 +161,14 @@ define(function (require, exports, module) {
                     html    = LanguageManager.getLanguage("html"),
                     unknown = LanguageManager.getLanguage("unknown");
                 
-                expect(LanguageManager.getLanguageForPath("foo.html.erb")).toBe(unknown);
-                expect(LanguageManager.getLanguageForPath("foo.erb")).toBe(unknown);
+                expect(LanguageManager.getLanguageForPath("foo.html.noSuchExt")).toBe(unknown);
+                expect(LanguageManager.getLanguageForPath("foo.noSuchExt")).toBe(unknown);
                 
-                html.addFileExtension("html.erb");
-                ruby.addFileExtension("erb");
+                html.addFileExtension("html.noSuchExt");
+                ruby.addFileExtension("noSuchExt");
                 
-                expect(LanguageManager.getLanguageForPath("foo.html.erb")).toBe(html);
-                expect(LanguageManager.getLanguageForPath("foo.erb")).toBe(ruby);
+                expect(LanguageManager.getLanguageForPath("foo.html.noSuchExt")).toBe(html);
+                expect(LanguageManager.getLanguageForPath("foo.noSuchExt")).toBe(ruby);
             });
             
             it("should map file names to languages", function () {

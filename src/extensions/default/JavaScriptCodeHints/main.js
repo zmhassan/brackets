@@ -26,25 +26,26 @@
 
 define(function (require, exports, module) {
     "use strict";
+    
+    var _ = brackets.getModule("lodash");
 
-    var CodeHintManager = brackets.getModule("editor/CodeHintManager"),
-        EditorManager   = brackets.getModule("editor/EditorManager"),
-        DocumentManager = brackets.getModule("document/DocumentManager"),
-        Commands        = brackets.getModule("command/Commands"),
-        CommandManager  = brackets.getModule("command/CommandManager"),
-        Menus           = brackets.getModule("command/Menus"),
-        Strings         = brackets.getModule("strings"),
-        AppInit         = brackets.getModule("utils/AppInit"),
-        ExtensionUtils  = brackets.getModule("utils/ExtensionUtils"),
-        PerfUtils       = brackets.getModule("utils/PerfUtils"),
-        StringUtils     = brackets.getModule("utils/StringUtils"),
-        StringMatch     = brackets.getModule("utils/StringMatch"),
-        LanguageManager = brackets.getModule("language/LanguageManager"),
-        ProjectManager  = brackets.getModule("project/ProjectManager"),
-        HintUtils       = require("HintUtils"),
-        ScopeManager    = require("ScopeManager"),
-        Session         = require("Session"),
-        Acorn           = require("thirdparty/acorn/acorn");
+    var CodeHintManager      = brackets.getModule("editor/CodeHintManager"),
+        EditorManager        = brackets.getModule("editor/EditorManager"),
+        DocumentManager      = brackets.getModule("document/DocumentManager"),
+        Commands             = brackets.getModule("command/Commands"),
+        CommandManager       = brackets.getModule("command/CommandManager"),
+        Menus                = brackets.getModule("command/Menus"),
+        AppInit              = brackets.getModule("utils/AppInit"),
+        ExtensionUtils       = brackets.getModule("utils/ExtensionUtils"),
+        PerfUtils            = brackets.getModule("utils/PerfUtils"),
+        StringMatch          = brackets.getModule("utils/StringMatch"),
+        LanguageManager      = brackets.getModule("language/LanguageManager"),
+        ProjectManager       = brackets.getModule("project/ProjectManager"),
+        ParameterHintManager = require("ParameterHintManager"),
+        HintUtils            = require("HintUtils"),
+        ScopeManager         = require("ScopeManager"),
+        Session              = require("Session"),
+        Acorn                = require("thirdparty/acorn/acorn");
 
     var session      = null,  // object that encapsulates the current session state
         cachedCursor = null,  // last cursor of the current hinting session
@@ -57,7 +58,7 @@ define(function (require, exports, module) {
     /**
      *  Get the value of current session.
      *  Used for unit testing.
-     * @returns {Session} - the current session.
+     * @return {Session} - the current session.
      */
     function getSession() {
         return session;
@@ -85,8 +86,11 @@ define(function (require, exports, module) {
          * @param {Array.<Object>} hints - the list of hints to format
          * @param {string} query - querystring used for highlighting matched
          *      poritions of each hint
-         * @return {Array.<jQuery.Object>} - array of hints formatted as jQuery
-         *      objects
+         * @return {jQuery.Deferred|{
+         *              hints: Array.<string|jQueryObject>,
+         *              match: string,
+         *              selectInitial: boolean,
+         *              handleWideResults: boolean}}
          */
         function formatHints(hints, query) {
             return hints.map(function (token) {
@@ -128,10 +132,10 @@ define(function (require, exports, module) {
                     token.stringRanges.forEach(function (item) {
                         if (item.matched) {
                             $hintObj.append($("<span>")
-                                .append(StringUtils.htmlEscape(item.text))
+                                .append(_.escape(item.text))
                                 .addClass("matched-hint"));
                         } else {
-                            $hintObj.append(StringUtils.htmlEscape(item.text));
+                            $hintObj.append(_.escape(item.text));
                         }
                     });
                 } else {
@@ -187,12 +191,12 @@ define(function (require, exports, module) {
             type    = session.getType();
 
         return !cachedHints || !cachedCursor || !cachedType ||
-                cachedCursor.line !== cursor.line ||
-                type.property !== cachedType.property ||
-                type.context !== cachedType.context ||
-                type.showFunctionType !== cachedType.showFunctionType ||
-                (type.functionCallPos && cachedType.functionCallPos &&
-                    type.functionCallPos.ch !== cachedType.functionCallPos.ch);
+            cachedCursor.line !== cursor.line ||
+            type.property !== cachedType.property ||
+            type.context !== cachedType.context ||
+            type.showFunctionType !== cachedType.showFunctionType ||
+            (type.functionCallPos && cachedType.functionCallPos &&
+            type.functionCallPos.ch !== cachedType.functionCallPos.ch);
     };
 
     /**
@@ -283,7 +287,7 @@ define(function (require, exports, module) {
     /**
      *  Create a new StringMatcher instance, if needed.
      *
-     * @returns {StringMatcher} - a StringMatcher instance.
+     * @return {StringMatcher} - a StringMatcher instance.
      */
     function getStringMatcher() {
         if (!matcher) {
@@ -299,7 +303,7 @@ define(function (require, exports, module) {
      *  Check if a hint response is pending.
      *
      * @param {jQuery.Deferred} deferredHints - deferred hint response
-     * @returns {boolean} - true if deferred hints are pending, false otherwise.
+     * @return {boolean} - true if deferred hints are pending, false otherwise.
      */
     function hintsArePending(deferredHints) {
         return (deferredHints && !deferredHints.hasOwnProperty("hints") &&
@@ -429,16 +433,24 @@ define(function (require, exports, module) {
                 }
 
                 var scopeResponse   = ScopeManager.requestHints(session, session.editor.document),
-                    $deferredHints = $.Deferred();
+                    $deferredHints  = $.Deferred(),
+                    scopeSession    = session;
 
                 scopeResponse.done(function () {
                     if (hintsArePending($deferredHints)) {
-                        getSessionHints(query, cursor, type, token, $deferredHints);
+                        // Verify we are still in same session
+                        if (scopeSession === session) {
+                            getSessionHints(query, cursor, type, token, $deferredHints);
+                        } else {
+                            $deferredHints.reject();
+                        }
                     }
+                    scopeSession = null;
                 }).fail(function () {
                     if (hintsArePending($deferredHints)) {
                         $deferredHints.reject();
                     }
+                    scopeSession = null;
                 });
 
                 return $deferredHints;
@@ -467,14 +479,8 @@ define(function (require, exports, module) {
             query       = session.getQuery(),
             start       = {line: cursor.line, ch: cursor.ch - query.length},
             end         = {line: cursor.line, ch: cursor.ch},
-            delimiter;
+            invalidPropertyName = false;
 
-        if (session.getType().showFunctionType) {
-            // function types show up as hints, so don't insert anything
-            // if we were displaying a function type            
-            return false;
-        }
-        
         if (session.getType().property) {
             // if we're inserting a property name, we need to make sure the 
             // hint is a valid property name.  
@@ -482,9 +488,8 @@ define(function (require, exports, module) {
             // it should result in one token, and that token should either be 
             // a 'name' or a 'keyword', as javascript allows keywords as property names
             var tokenizer = Acorn.tokenize(completion);
-            var currentToken = tokenizer(),
-                invalidPropertyName = false;
-            
+            var currentToken = tokenizer();
+
             // the name is invalid if the hint is not a 'name' or 'keyword' token
             if (currentToken.type !== Acorn.tokTypes.name && !currentToken.type.keyword) {
                 invalidPropertyName = true;
@@ -508,6 +513,7 @@ define(function (require, exports, module) {
                 }
             }
         }
+
         // Replace the current token with the completion
         // HACK (tracking adobe/brackets#1688): We talk to the private CodeMirror instance
         // directly to replace the range instead of using the Document, as we should. The
@@ -519,7 +525,7 @@ define(function (require, exports, module) {
         return false;
     };
 
-     // load the extension
+    // load the extension
     AppInit.appReady(function () {
 
         /*
@@ -533,6 +539,7 @@ define(function (require, exports, module) {
             session = new Session(editor);
             ScopeManager.handleEditorChange(session, editor.document,
                 previousEditor ? previousEditor.document : null);
+            ParameterHintManager.setSession(session);
             cachedHints = null;
         }
 
@@ -553,9 +560,12 @@ define(function (require, exports, module) {
                     .on(HintUtils.eventName("change"), function (event, editor, changeList) {
                         if (!ignoreChange) {
                             ScopeManager.handleFileChange(changeList);
+                            ParameterHintManager.popUpHintAtOpenParen();
                         }
                         ignoreChange = false;
                     });
+
+                ParameterHintManager.installListeners(editor);
             } else {
                 session = null;
             }
@@ -762,6 +772,8 @@ define(function (require, exports, module) {
 
         var jsHints = new JSHints();
         CodeHintManager.registerHintProvider(jsHints, HintUtils.SUPPORTED_LANGUAGES, 0);
+
+        ParameterHintManager.addCommands();
 
         // for unit testing
         exports.getSession = getSession;

@@ -58,7 +58,9 @@ define(function (require, exports, module) {
         PerfUtils           = require("utils/PerfUtils"),
         Editor              = require("editor/Editor").Editor,
         InlineTextEditor    = require("editor/InlineTextEditor").InlineTextEditor,
-        Strings             = require("strings");
+        ImageViewer         = require("editor/ImageViewer"),
+        Strings             = require("strings"),
+        LanguageManager     = require("language/LanguageManager");
     
     /** @type {jQueryObject} DOM node that contains all editors (visible and hidden alike) */
     var _editorHolder = null;
@@ -70,6 +72,10 @@ define(function (require, exports, module) {
     var _currentEditor = null;
     /** @type {?Document} */
     var _currentEditorsDocument = null;
+    /** @type {?string} full path to file */
+    var _currentlyViewedPath = null;
+    /** @type {?JQuery} DOM node representing UI of custom view   */
+    var _$currentCustomViewer = null;
     
     /**
      * Currently focused Editor (full-size, inline, or otherwise)
@@ -298,8 +304,8 @@ define(function (require, exports, module) {
         
         if (hostEditor) {
             hostEditor.getInlineWidgets().forEach(function (widget) {
-                if (widget instanceof InlineTextEditor) {
-                    inlineEditors = inlineEditors.concat(widget.editors);
+                if (widget instanceof InlineTextEditor && widget.editor) {
+                    inlineEditors.push(widget.editor);
                 }
             });
         }
@@ -343,8 +349,14 @@ define(function (require, exports, module) {
      * @return {{content:DOMElement, editor:Editor}}
      */
     function createInlineEditorForDocument(doc, range, inlineContent) {
-        // Create the Editor
+        // Hide the container for the editor before creating it so that CodeMirror doesn't do extra work
+        // when initializing the document. When we construct the editor, we have to set its text and then
+        // set the (small) visible range that we show in the editor. If the editor is visible, CM has to
+        // render a large portion of the document before setting the visible range. By hiding the editor
+        // first and showing it after the visible range is set, we avoid that initial render.
+        $(inlineContent).hide();
         var inlineEditor = _createEditorForDocument(doc, false, inlineContent, range);
+        $(inlineContent).show();
         
         return { content: inlineContent, editor: inlineEditor };
     }
@@ -439,12 +451,13 @@ define(function (require, exports, module) {
      *    determine whether it needs to refresh.
      */
     function _onEditorAreaResize(event, editorAreaHt, refreshFlag) {
-        
         if (_currentEditor) {
             var curRoot = _currentEditor.getRootElement(),
                 curWidth = $(curRoot).width();
             if (!curRoot.style.height || $(curRoot).height() !== editorAreaHt) {
-                $(curRoot).height(editorAreaHt);
+                // Call setSize() instead of $.height() to allow CodeMirror to
+                // check for options like line wrapping
+                _currentEditor.setSize(null, editorAreaHt);
                 if (refreshFlag === undefined) {
                     refreshFlag = REFRESH_FORCE;
                 }
@@ -533,6 +546,13 @@ define(function (require, exports, module) {
         var createdNewEditor = false;
         if (!document._masterEditor) {
             createdNewEditor = true;
+
+            // Performance (see #4757) Chrome wastes time messing with selection
+            // that will just be changed at end, so clear it for now
+            if (window.getSelection && window.getSelection().empty) {  // Chrome
+                window.getSelection().empty();
+            }
+            
             // Editor doesn't exist: populate a new Editor with the text
             _createFullEditorForDocument(document);
         }
@@ -544,9 +564,12 @@ define(function (require, exports, module) {
         }
     }
     
-
-    /** Hide the currently visible editor and show a placeholder UI in its place */
-    function _showNoEditor() {
+    /**
+     * resets editor state to make sure getFocusedEditor(), getActiveEditor() 
+     * and getCurrentFullEditor() return null when an image or the NoEditor 
+     * placeholder is displayed.
+     */
+    function _nullifyEditor() {
         if (_currentEditor) {
             _saveEditorViewState(_currentEditor);
             _currentEditor.setVisible(false);
@@ -554,12 +577,63 @@ define(function (require, exports, module) {
             
             _currentEditorsDocument = null;
             _currentEditor = null;
-            
-            $("#not-editor").css("display", "");
-            
             // No other Editor is gaining focus, so in this one special case we must trigger event manually
             _notifyActiveEditorChanged(null);
         }
+    }
+    
+    /** Hide the currently visible editor and show a placeholder UI in its place */
+    function _showNoEditor() {
+        if (_currentEditor) {
+            $("#not-editor").css("display", "");
+            _nullifyEditor();
+        }
+    }
+    
+    function getCurrentlyViewedPath() {
+        return _currentlyViewedPath;
+    }
+    
+    function _clearCurrentlyViewedPath() {
+        _currentlyViewedPath = null;
+        $(exports).triggerHandler("currentlyViewedFileChange");
+    }
+    
+    function _setCurrentlyViewedPath(fullPath) {
+        _currentlyViewedPath = fullPath;
+        $(exports).triggerHandler("currentlyViewedFileChange");
+    }
+    
+    /** Remove existing custom view if present */
+    function _removeCustomViewer() {
+        $(exports).triggerHandler("removeCustomViewer");
+        if (_$currentCustomViewer) {
+            _$currentCustomViewer.remove();
+        }
+        _$currentCustomViewer = null;
+    }
+
+    /** append custom view to editor-holder
+     *  @param {!JQuery} $customView  DOM node representing UI of custom view
+     *  @param {!string} fullPath  path to the file displayed in the custom view
+     */
+    function showCustomViewer($customView, fullPath) {
+        DocumentManager._clearCurrentDocument();
+    
+        // Hide the not-editor
+        $("#not-editor").css("display", "none");
+        
+        _removeCustomViewer();
+        
+        _nullifyEditor();
+        _$currentCustomViewer = $customView;
+        // place in window
+        $("#editor-holder").append(_$currentCustomViewer);
+        
+        // add path, dimensions and file size to the view after loading image
+        ImageViewer.render(fullPath);
+        
+        _setCurrentlyViewedPath(fullPath);
     }
 
     /** Handles changes to DocumentManager.getCurrentDocument() */
@@ -569,11 +643,15 @@ define(function (require, exports, module) {
         
         var perfTimerName = PerfUtils.markStart("EditorManager._onCurrentDocumentChange():\t" + (!doc || doc.file.fullPath));
         
+        // When the document or file in view changes clean up.
+        _removeCustomViewer();
         // Update the UI to show the right editor (or nothing), and also dispose old editor if no
         // longer needed.
         if (doc) {
             _showEditor(doc);
+            _setCurrentlyViewedPath(doc.file.fullPath);
         } else {
+            _clearCurrentlyViewedPath();
             _showNoEditor();
         }
 
@@ -794,34 +872,37 @@ define(function (require, exports, module) {
 
     // Initialize: register listeners
     $(DocumentManager).on("currentDocumentChange", _onCurrentDocumentChange);
-    $(DocumentManager).on("workingSetRemove", _onWorkingSetRemove);
-    $(DocumentManager).on("workingSetRemoveList", _onWorkingSetRemoveList);
-    $(PanelManager).on("editorAreaResize", _onEditorAreaResize);
+    $(DocumentManager).on("workingSetRemove",      _onWorkingSetRemove);
+    $(DocumentManager).on("workingSetRemoveList",  _onWorkingSetRemoveList);
+    $(PanelManager).on("editorAreaResize",         _onEditorAreaResize);
+
 
     // For unit tests and internal use only
-    exports._openInlineWidget = _openInlineWidget;
-    exports._createFullEditorForDocument = _createFullEditorForDocument;
-    exports._destroyEditorIfUnneeded = _destroyEditorIfUnneeded;
-    exports._getViewState = _getViewState;
-    exports._resetViewStates = _resetViewStates;
-    exports._doShow = _doShow;
-    exports._notifyActiveEditorChanged = _notifyActiveEditorChanged;
+    exports._openInlineWidget             = _openInlineWidget;
+    exports._createFullEditorForDocument  = _createFullEditorForDocument;
+    exports._destroyEditorIfUnneeded      = _destroyEditorIfUnneeded;
+    exports._getViewState                 = _getViewState;
+    exports._resetViewStates              = _resetViewStates;
+    exports._doShow                       = _doShow;
+    exports._notifyActiveEditorChanged    = _notifyActiveEditorChanged;
     
     exports.REFRESH_FORCE = REFRESH_FORCE;
-    exports.REFRESH_SKIP = REFRESH_SKIP;
+    exports.REFRESH_SKIP  = REFRESH_SKIP;
     
     // Define public API
-    exports.setEditorHolder = setEditorHolder;
-    exports.getCurrentFullEditor = getCurrentFullEditor;
+    exports.setEditorHolder               = setEditorHolder;
+    exports.getCurrentFullEditor          = getCurrentFullEditor;
     exports.createInlineEditorForDocument = createInlineEditorForDocument;
-    exports.focusEditor = focusEditor;
-    exports.getFocusedEditor = getFocusedEditor;
-    exports.getActiveEditor = getActiveEditor;
-    exports.getFocusedInlineWidget = getFocusedInlineWidget;
-    exports.resizeEditor = resizeEditor;
-    exports.registerInlineEditProvider = registerInlineEditProvider;
-    exports.registerInlineDocsProvider = registerInlineDocsProvider;
-    exports.registerJumpToDefProvider = registerJumpToDefProvider;
-    exports.getInlineEditors = getInlineEditors;
-    exports.closeInlineWidget = closeInlineWidget;
+    exports.focusEditor                   = focusEditor;
+    exports.getFocusedEditor              = getFocusedEditor;
+    exports.getActiveEditor               = getActiveEditor;
+    exports.getCurrentlyViewedPath        = getCurrentlyViewedPath;
+    exports.getFocusedInlineWidget        = getFocusedInlineWidget;
+    exports.resizeEditor                  = resizeEditor;
+    exports.registerInlineEditProvider    = registerInlineEditProvider;
+    exports.registerInlineDocsProvider    = registerInlineDocsProvider;
+    exports.registerJumpToDefProvider     = registerJumpToDefProvider;
+    exports.getInlineEditors              = getInlineEditors;
+    exports.closeInlineWidget             = closeInlineWidget;
+    exports.showCustomViewer              = showCustomViewer;
 });

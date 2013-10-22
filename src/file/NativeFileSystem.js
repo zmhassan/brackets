@@ -243,6 +243,22 @@ define(function (require, exports, module) {
                 }
             });
         },
+        
+        /**
+         * Public static method to check if a file path is relative one
+         * @param {string} path A file path to check
+         * @return {boolean} True if the path is relative
+         */
+        isRelativePath: function (path) {
+            // If the path contains a colon on Windows it must be a full path (colons are
+            // not valid path characters on mac or in URIs)
+            if (brackets.platform === "win" && path.indexOf(":") !== -1) {
+                return false;
+            }
+            
+            // For everyone else, absolute paths start with a "/"
+            return path[0] !== "/";
+        },
 
         /**
          * Converts a brackets.fs.ERR_* error code to a NativeFileError.* error name
@@ -441,7 +457,7 @@ define(function (require, exports, module) {
     NativeFileSystem.Entry.prototype.getMetadata = function (successCallBack, errorCallback) {
         brackets.fs.stat(this.fullPath, function (err, stat) {
             if (err === brackets.fs.NO_ERROR) {
-                var metadata = new NativeFileSystem.Metadata(stat.mtime);
+                var metadata = new NativeFileSystem.Metadata(stat.mtime, stat.size);
                 successCallBack(metadata);
             } else {
                 errorCallback(new NativeFileError(NativeFileSystem._fsErrorToDOMErrorName(err)));
@@ -457,10 +473,12 @@ define(function (require, exports, module) {
      * Supplies information about the state of a file or directory
      * @constructor
      * @param {Date} modificationTime Time at which the file or directory was last modified
+     * @param {Number} size the size in bytes of the file
      */
-    NativeFileSystem.Metadata = function (modificationTime) {
+    NativeFileSystem.Metadata = function (modificationTime, size) {
         // modificationTime is read only
         this.modificationTime = modificationTime;
+        this.size = size;
     };
 
     /**
@@ -813,20 +831,9 @@ define(function (require, exports, module) {
     NativeFileSystem.DirectoryEntry.prototype.getDirectory = function (path, options, successCallback, errorCallback) {
         var directoryFullPath = path,
             filesystem = this.filesystem;
-        
-        function isRelativePath(path) {
-            // If the path contains a colons it must be a full path on Windows (colons are
-            // not valid path characters on mac or in URIs)
-            if (path.indexOf(":") !== -1) {
-                return false;
-            }
-            
-            // For everyone else, absolute paths start with a "/"
-            return path[0] !== "/";
-        }
 
         // resolve relative paths relative to the DirectoryEntry
-        if (isRelativePath(path)) {
+        if (NativeFileSystem.isRelativePath(path)) {
             directoryFullPath = this.fullPath + path;
         }
 
@@ -933,20 +940,9 @@ define(function (require, exports, module) {
     NativeFileSystem.DirectoryEntry.prototype.getFile = function (path, options, successCallback, errorCallback) {
         var fileFullPath = path,
             filesystem = this.filesystem;
-        
-        function isRelativePath(path) {
-            // If the path contains a colons it must be a full path on Windows (colons are
-            // not valid path characters on mac or in URIs)
-            if (path.indexOf(":") !== -1) {
-                return false;
-            }
-            
-            // For everyone else, absolute paths start with a "/"
-            return path[0] !== "/";
-        }
 
         // resolve relative paths relative to the DirectoryEntry
-        if (isRelativePath(path)) {
+        if (NativeFileSystem.isRelativePath(path)) {
             fileFullPath = this.fullPath + path;
         }
 

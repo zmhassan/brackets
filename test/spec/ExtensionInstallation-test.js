@@ -24,7 +24,7 @@
 
 /*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true,
 indent: 4, maxerr: 50 */
-/*global define, describe, it, xit, expect, beforeEach, afterEach, waits,
+/*global define, describe, it, xit, expect, beforeFirst, afterLast, beforeEach, afterEach, waits,
 waitsFor, runs, $, brackets, waitsForDone */
 
 define(function (require, exports, module) {
@@ -119,6 +119,14 @@ define(function (require, exports, module) {
             d.resolve();
             return d.promise();
         }
+
+        beforeFirst(function () {
+            SpecRunnerUtils.createTempDirectory();
+        });
+
+        afterLast(function () {
+            SpecRunnerUtils.removeTempDirectory();
+        });
         
         beforeEach(function () {
             realGetUserExtensionPath = ExtensionLoader.getUserExtensionPath;
@@ -132,7 +140,7 @@ define(function (require, exports, module) {
         afterEach(function () {
             ExtensionLoader.getUserExtensionPath = realGetUserExtensionPath;
             ExtensionLoader.loadExtension = realLoadExtension;
-            var promise = SpecRunnerUtils.remove(mockGetUserExtensionPath());
+            var promise = SpecRunnerUtils.deletePath(mockGetUserExtensionPath(), true);
             waitsForDone(promise, "Mock Extension Removal", 2000);
         });
         
@@ -171,7 +179,7 @@ define(function (require, exports, module) {
 
             runs(function () {
                 expect(packageData.errors.length).toEqual(0);
-                expect(packageData.disabledReason).not.toBeNull();
+                expect(packageData.disabledReason).toBeTruthy();
                 expect(packageData.name).toEqual("incompatible-version");
                 expect(lastExtensionLoad).toEqual({});
                 NativeFileSystem.resolveNativeFileSystemPath(extensionsRoot + "/disabled/incompatible-version",

@@ -58,8 +58,8 @@ define(function (require, exports, module) {
         menu.addMenuDivider();
         menu.addMenuItem(Commands.FILE_EXTENSION_MANAGER);
         
-        // supress redundant quit menu item on mac
-        if (brackets.platform !== "mac" && !brackets.inBrowser) {
+        // suppress redundant quit menu item on mac
+        if (brackets.platform !== "mac" || !brackets.nativeMenus) {
             menu.addMenuDivider();
             menu.addMenuItem(Commands.FILE_QUIT);
         }
@@ -116,6 +116,8 @@ define(function (require, exports, module) {
         menu.addMenuItem(Commands.TOGGLE_WORD_WRAP);
         menu.addMenuDivider();
         menu.addMenuItem(Commands.FILE_LIVE_HIGHLIGHT);
+        menu.addMenuDivider();
+        menu.addMenuItem(Commands.VIEW_TOGGLE_INSPECTION);
         
         /*
          * Navigate menu
@@ -125,6 +127,7 @@ define(function (require, exports, module) {
         menu.addMenuItem(Commands.NAVIGATE_GOTO_LINE);
         menu.addMenuItem(Commands.NAVIGATE_GOTO_DEFINITION);
         menu.addMenuItem(Commands.NAVIGATE_JUMPTO_DEFINITION);
+        menu.addMenuItem(Commands.NAVIGATE_GOTO_FIRST_PROBLEM);
         menu.addMenuDivider();
         menu.addMenuItem(Commands.NAVIGATE_NEXT_DOC);
         menu.addMenuItem(Commands.NAVIGATE_PREV_DOC);
@@ -134,6 +137,7 @@ define(function (require, exports, module) {
         menu.addMenuItem(Commands.TOGGLE_QUICK_EDIT);
         menu.addMenuItem(Commands.QUICK_EDIT_PREV_MATCH);
         menu.addMenuItem(Commands.QUICK_EDIT_NEXT_MATCH);
+        menu.addMenuItem(Commands.CSS_QUICK_EDIT_NEW_RULE);
         menu.addMenuDivider();
         menu.addMenuItem(Commands.TOGGLE_QUICK_DOCS);
 
@@ -161,7 +165,7 @@ define(function (require, exports, module) {
         menu.addMenuItem(Commands.HELP_SHOW_EXT_FOLDER);
 
 
-        var hasAboutItem = (brackets.platform !== "mac" || brackets.inBrowser);
+        var hasAboutItem = (brackets.platform !== "mac" || !brackets.nativeMenus);
         
         // Add final divider only if we have a twitter URL or about item
         if (hasAboutItem || brackets.config.twitter_url) {

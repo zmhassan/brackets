@@ -21,8 +21,13 @@ src/extensions/disabled
 .DS_Store
 
 # unit test working directory
-test/temp
 test/results
 
 # Netbeans
 /nbproject
+
+# PhpStorm
+.idea
+
+# Files that can be automatically downloaded that we don't want to ship with our builds
+src/extensibility/node/node_modules/request/tests/
