@@ -28,8 +28,6 @@
 define(function (require, exports, module) {
     "use strict";
 
-    require("thirdparty/path-utils/path-utils.min");
-
     var Dialogs                = require("widgets/Dialogs"),
         StringUtils            = require("utils/StringUtils"),
         Strings                = require("strings"),
@@ -53,8 +51,6 @@ define(function (require, exports, module) {
         STATE_OVERWRITE_CONFIRMED = 10,
         STATE_NEEDS_UPDATE        = 11;
 
-    var _installQueue;
-
     /**
      * @constructor
      * Creates a new extension installer dialog.
@@ -65,6 +61,7 @@ define(function (require, exports, module) {
         this._state = STATE_CLOSED;
         this._installResult = null;
         this._isUpdate = _isUpdate;
+        this._installQueue = [];
 
         // Timeout before we allow user to leave STATE_INSTALL_CANCELING without waiting for a resolution
         // (per-instance so we can poke it for unit testing)
@@ -133,11 +130,12 @@ define(function (require, exports, module) {
             break;
 
         case STATE_VALID_URL:
+            this._installQueue = this.$url.val().replace(/\s/gm, '').split(',');
             this.$okButton.prop("disabled", false);
             break;
 
         case STATE_INSTALLING:
-            url = _installQueue[0];
+            url = this._installQueue[0];
             this.$inputArea.hide();
             this.$browseExtensionsButton.hide();
             this.$msg.text(StringUtils.format(Strings.INSTALLING_FROM, url))
@@ -146,7 +144,7 @@ define(function (require, exports, module) {
             this.$okButton.prop("disabled", true);
             this._installer.install(url)
                 .done(function (result) {
-                    _installQueue.shift();
+                    self._installQueue.shift();
                     self._installResult = result;
                     if (result.installationStatus === Package.InstallationStatuses.ALREADY_INSTALLED ||
                             result.installationStatus === Package.InstallationStatuses.OLDER_VERSION ||
@@ -157,7 +155,7 @@ define(function (require, exports, module) {
                     } else {
                         self._enterState(STATE_INSTALLED);
                     }
-                    if (_installQueue.length > 0) {
+                    if (self._installQueue.length > 0) {
                         self._enterState(STATE_INSTALLING);
                     }
                 })
@@ -286,7 +284,6 @@ define(function (require, exports, module) {
             // success.
             this._enterState(STATE_CLOSED);
         } else if (this._state === STATE_VALID_URL) {
-            _installQueue = this.$url.val().replace(/\s/gm, '').split(',');
             this._enterState(STATE_INSTALLING);
         } else if (this._state === STATE_ALREADY_INSTALLED) {
             this._enterState(STATE_OVERWRITE_CONFIRMED);
@@ -350,7 +347,7 @@ define(function (require, exports, module) {
         Dialogs.showModalDialogUsingTemplate(Mustache.render(InstallDialogTemplate, context), false);
 
         this.$dlg          = $(".install-extension-dialog.instance");
-        this.$url          = this.$dlg.find(".url").eq(1).focus();
+        this.$url          = this.$dlg.find(".url").focus();
         this.$okButton     = this.$dlg.find(".dialog-button[data-button-id='ok']");
         this.$cancelButton = this.$dlg.find(".dialog-button[data-button-id='cancel']");
         this.$inputArea    = this.$dlg.find(".input-field");
@@ -425,9 +422,6 @@ define(function (require, exports, module) {
         var dlg = new InstallExtensionDialog(new InstallerFacade(), _isUpdate);
         return dlg.show(urlToInstall);
     }
-
-    exports.showDialog = showDialog;
-    exports.installUsingDialog = installUsingDialog;
 
     /**
      * @private
