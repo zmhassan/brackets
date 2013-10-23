@@ -310,7 +310,6 @@ define(function (require, exports, module) {
     InstallExtensionDialog.prototype._handleUrlInput = function () {
         var url = this.$url.val(),
             valid = (url !== "");
-            console.log(this.$url);
         if (!valid && this._state === STATE_VALID_URL) {
             this._enterState(STATE_START);
         } else if (valid && this._state === STATE_START) {
@@ -340,10 +339,6 @@ define(function (require, exports, module) {
             // Somehow the dialog got invoked twice. Just ignore this.
             return this._dialogDeferred.promise();
         }
-
-        // We ignore the promise returned by showModalDialogUsingTemplate, since we're managing the
-        // lifecycle of the dialog ourselves.
-        Dialogs.showModalDialogUsingTemplate(Mustache.render(InstallDialogTemplate, Strings), false);
 
         var context = {
             Strings: Strings,
