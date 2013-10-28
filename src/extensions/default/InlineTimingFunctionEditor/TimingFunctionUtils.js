@@ -34,7 +34,14 @@ define(function (require, exports, module) {
      * Regular expression that matches CSS cubic-beziers functions (4 parameters).
      * @const @type {RegExp}
      */
-    var BEZIER_CURVE_REGEX = /cubic-bezier\(\s*(\S+)\s*,\s*(\S+)\s*,\s*(\S+)\s*,\s*(\S+)\s*\)/;
+    var BEZIER_CURVE_REGEX  = /cubic-bezier\(\s*(\S+)\s*,\s*(\S+)\s*,\s*(\S+)\s*,\s*(\S+)\s*\)/,
+        EASE_STRICT_REGEX   = /[: ,]ease(?:-in)?(?:-out)?[ ,;]/,
+        EASE_LAX_REGEX      = /ease(?:-in)?(?:-out)?/,
+        LINEAR_STRICT_REGEX = /transition.*?[: ,]linear[ ,;]/,
+        LINEAR_LAX_REGEX    = /linear/,
+        STEPS_REGEX         = /steps\(\s*(\d+)\s*(?:,\s*(start|end)\s*)?\)/,
+        STEP_STRICT_REGEX   = /[: ,](?:step-start|step-end)[ ,;]/,
+        STEP_LAX_REGEX      = /step-start|step-end/;
 
     /**
      * If string is a number, then convert it.
@@ -58,13 +65,13 @@ define(function (require, exports, module) {
     }
 
     /**
-     * Validate cubic-bezier function parameters
+     * Validate cubic-bezier function parameters that are not already validated by regex:
      *
      * @param {RegExp.match} match  RegExp Match object with cubic-bezier function parameters
      *                              in array positions 1-4.
      * @return {boolean} true if all parameters are valid, otherwise, false
      */
-    function _validateParams(match) {
+    function _validateCubicBezierParams(match) {
         var x1 = _convertToNumber(match[1]),
             y1 = _convertToNumber(match[2]),
             x2 = _convertToNumber(match[3]),
@@ -84,6 +91,121 @@ define(function (require, exports, module) {
     }
 
     /**
+     * Validate steps function parameters that are not already validated by regex:
+     *
+     * @param {RegExp.match} match  RegExp Match object with steps function parameters
+     *                              in array position 1 (and optionally 2).
+     * @return {boolean} true if all parameters are valid, otherwise, false
+     */
+    function _validateStepsParams(match) {
+        var count = _convertToNumber(match[1]);
+
+        if (!count.isNumber || count.value <= 0) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Match a bezier curve function value from a CSS Declaration or Value.
+     *
+     * Matches returned from this function must be handled in
+     * TimingFunctionEditor._getCubicBezierCoords().
+     *
+     * @param {string} str  Input string.
+     * @param {!boolean} lax  Parsing mode where:
+     *          lax=false Input is a Full or partial line containing CSS Declaration.
+     *                    This is the more strict search used for initial detection.
+     *          lax=true  Input is a previously parsed value. This is the less strict search
+     *                    used to convert previously parsed values to RegExp match format.
+     * @return {!RegExpMatch}
+     */
+    function bezierCurveMatch(str, lax) {
+
+        // First look for cubic-bezier(x1,y1,x2,y2).
+        var match = str.match(BEZIER_CURVE_REGEX);
+        if (match) {
+            return _validateCubicBezierParams(match) ? match : null;
+        }
+
+        // Next look for the ease functions (which are special cases of cubic-bezier())
+        if (lax) {
+            // For lax parsing, just look for the keywords
+            match = str.match(EASE_LAX_REGEX);
+            if (match) {
+                return match;
+            }
+        } else {
+            // For strict parsing, start with a syntax verifying search
+            match = str.match(EASE_STRICT_REGEX);
+            if (match) {
+                // return exact match to keyword that we need for later replacement
+                return str.match(EASE_LAX_REGEX);
+            }
+        }
+
+        // Final case is linear.
+        if (lax) {
+            // For lax parsing, just look for the keyword
+            match = str.match(LINEAR_LAX_REGEX);
+            if (match) {
+                return match;
+            }
+        } else {
+            // The linear keyword can occur in other values, so for strict parsing we
+            // only detect when it's on same line as "transition"
+            match = str.match(LINEAR_STRICT_REGEX);
+            if (match) {
+                // return exact match to keyword that we need for later replacement
+                return str.match(LINEAR_LAX_REGEX);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Match a steps function value from a CSS Declaration or Value.
+     *
+     * Matches returned from this function must be handled in
+     * TimingFunctionEditor._getCubicBezierCoords().
+     *
+     * @param {string} str  Input string.
+     * @param {!boolean} lax  Parsing mode where:
+     *          lax=false Input is a Full or partial line containing CSS Declaration.
+     *                    This is the more strict search used for initial detection.
+     *          lax=true  Input is a previously parsed value. This is the less strict search
+     *                    used to convert previously parsed values to RegExp match format.
+     * @return {!RegExpMatch}
+     */
+    function stepsMatch(str, lax) {
+        // First look for steps(i,pos).
+        var match = str.match(STEPS_REGEX);
+        if (match) {
+            return _validateStepsParams(match) ? match : null;
+        }
+
+        // Next look for the step functions (which are special cases of steps())
+        if (lax) {
+            // For lax parsing, just look for the keywords
+            match = str.match(STEP_LAX_REGEX);
+            if (match) {
+                return match;
+            }
+        } else {
+            // For strict parsing, start with a syntax verifying search
+            match = str.match(STEP_STRICT_REGEX);
+            if (match) {
+                // return exact match to keyword that we need for later replacement
+                return str.match(STEP_LAX_REGEX);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Match a timing function value from a CSS Declaration or Value.
      *
      * Matches returned from this function must be handled in
@@ -94,53 +216,15 @@ define(function (require, exports, module) {
      *          lax=false Input is a Full or partial line containing CSS Declaration.
      *                    This is the more strict search used for initial detection.
      *          lax=true  Input is a previously parsed value. This is the less strict search
-     *                    used to convert previouslt parsed values to RegExp match format.
+     *                    used to convert previously parsed values to RegExp match format.
      * @return {!RegExpMatch}
      */
-    function bezierCurveMatch(str, lax) {
-
-        // First look for cubic-bezier(...).
-        var match = str.match(BEZIER_CURVE_REGEX);
-        if (match) {
-            return _validateParams(match) ? match : null;
-        }
-
-        // Next look for the ease functions (which are special cases of cubic-bezier())
-        if (lax) {
-            // For lax parsing, just look for the keywords
-            match = str.match(/ease(?:-in)?(?:-out)?/);
-            if (match) {
-                return match;
-            }
-        } else {
-            // For strict parsing, start with a syntax verifying search
-            match = str.match(/[: ,]ease(?:-in)?(?:-out)?[ ,;]/);
-            if (match) {
-                // return exact match to keyword that we need for later replacement
-                return str.match(/ease(?:-in)?(?:-out)?/);
-            }
-        }
-
-        // Final case is linear.
-        if (lax) {
-            // For lax parsing, just look for the keyword
-            match = str.match(/linear/);
-            if (match) {
-                return match;
-            }
-        } else {
-            // The linear keyword can occur in other values, so for strict parsing we
-            // only detect when it's on same line as "transition"
-            match = str.match(/transition.*?[: ,]linear[ ,;]/);
-            if (match) {
-                // return exact match to keyword that we need for later replacement
-                return str.match(/linear/);
-            }
-        }
-
-        return null;
+    function timingFunctionMatch(str, lax) {
+        return bezierCurveMatch(str, lax) || stepsMatch(str, lax);
     }
 
     // Define public API
+    exports.timingFunctionMatch = timingFunctionMatch;
     exports.bezierCurveMatch    = bezierCurveMatch;
+    exports.stepsMatch          = stepsMatch;
 });

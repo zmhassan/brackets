@@ -120,7 +120,7 @@ define(function (require, exports, module) {
         // instead of two bookmarks to track the range. (In our current old version of
         // CodeMirror v2, markText() isn't robust enough for this case.)
         var line = this.hostEditor.document.getLine(start.line),
-            matches = TimingFunctionUtils.bezierCurveMatch(line.substr(start.ch), true);
+            matches = TimingFunctionUtils.timingFunctionMatch(line.substr(start.ch), true);
 
         // No longer have a match
         if (!matches) {
@@ -152,7 +152,7 @@ define(function (require, exports, module) {
      * @param {!string} timingFunctionString
      */
     InlineTimingFunctionEditor.prototype._handleTimingFunctionChange = function (timingFunctionString) {
-        var timingFunctionMatch = TimingFunctionUtils.bezierCurveMatch(timingFunctionString, true);
+        var timingFunctionMatch = TimingFunctionUtils.timingFunctionMatch(timingFunctionString, true);
         if (timingFunctionMatch !== this._timingFunction) {
             var range = this.getCurrentRange();
             if (!range) {
@@ -183,8 +183,7 @@ define(function (require, exports, module) {
         InlineTimingFunctionEditor.prototype.parentClass.load.apply(this, arguments);
         
         // Create timing function editor control
-        var swatchInfo = null;
-        this.timingFunctionEditor = new TimingFunctionEditor(this.$htmlContent, this._timingFunction, this._handleTimingFunctionChange, swatchInfo);
+        this.timingFunctionEditor = new TimingFunctionEditor(this.$htmlContent, this._timingFunction, this._handleTimingFunctionChange);
     };
 
     /**
