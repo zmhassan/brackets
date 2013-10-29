@@ -28,7 +28,7 @@ define(function (require, exports, module) {
     "use strict";
     
     var InlineWidget         = brackets.getModule("editor/InlineWidget").InlineWidget,
-        TimingFunctionEditor = require("TimingFunctionEditor").TimingFunctionEditor,
+        BezierCurveEditor    = require("BezierCurveEditor").BezierCurveEditor,
         TimingFunctionUtils  = require("TimingFunctionUtils");
         
 
@@ -36,7 +36,7 @@ define(function (require, exports, module) {
     var lastOriginId = 1;
     
     /**
-     * Constructor for inline widget containing a TimingFunctionEditor control
+     * Constructor for inline widget containing a BezierCurveEditor control
      *
      * @param {!RegExpMatch} timingFunction  RegExp match object of initially selected timingFunction
      * @param {!CodeMirror.Bookmark} startBookmark
@@ -60,7 +60,7 @@ define(function (require, exports, module) {
     InlineTimingFunctionEditor.prototype.constructor = InlineTimingFunctionEditor;
     InlineTimingFunctionEditor.prototype.parentClass = InlineWidget.prototype;
     
-    /** @type {!TimingFunctionEditor} TimingFunctionEditor instance */
+    /** @type {!BezierCurveEditor} BezierCurveEditor instance */
     InlineTimingFunctionEditor.prototype.timingFunctionEditor = null;
     
     /** @type {!string} Current value of the timing function editor control */
@@ -183,7 +183,7 @@ define(function (require, exports, module) {
         InlineTimingFunctionEditor.prototype.parentClass.load.apply(this, arguments);
         
         // Create timing function editor control
-        this.timingFunctionEditor = new TimingFunctionEditor(this.$htmlContent, this._timingFunction, this._handleTimingFunctionChange);
+        this.timingFunctionEditor = new BezierCurveEditor(this.$htmlContent, this._timingFunction, this._handleTimingFunctionChange);
     };
 
     /**

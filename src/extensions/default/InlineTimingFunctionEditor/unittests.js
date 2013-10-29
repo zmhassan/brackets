@@ -33,7 +33,7 @@ define(function (require, exports, module) {
         testContentCSS          = require("text!unittest-files/unittests.css"),
         provider                = require("main").inlineTimingFunctionEditorProvider,
         TimingFunctionUtils     = require("TimingFunctionUtils"),
-        TimingFunctionEditor    = require("TimingFunctionEditor").TimingFunctionEditor;
+        BezierCurveEditor       = require("BezierCurveEditor").BezierCurveEditor;
 
     describe("Inline Timing Function Editor", function () {
 
@@ -388,15 +388,15 @@ define(function (require, exports, module) {
             var timingFunctionEditor;
             
             /**
-             * Creates a hidden TimingFunctionEditor and appends it to the body. Note that this is a
-             * standalone TimingFunctionEditor, not inside an InlineTimingFunctionEditor.
+             * Creates a hidden BezierCurveEditor and appends it to the body. Note that this is a
+             * standalone BezierCurveEditor, not inside an InlineTimingFunctionEditor.
              * @param {string} initialTimingFunction The timingFunction that should be initially set
-             *     in the TimingFunctionEditor.
-             * @param {?function} callback An optional callback to be passed as the TimingFunctionEditor's
+             *     in the BezierCurveEditor.
+             * @param {?function} callback An optional callback to be passed as the BezierCurveEditor's
              *     callback. If none is supplied, a dummy function is passed.
              */
-            function makeUI(initialTimingFunction, callback) {
-                timingFunctionEditor = new TimingFunctionEditor(
+            function makeBezierCurveUI(initialTimingFunction, callback) {
+                timingFunctionEditor = new BezierCurveEditor(
                     $(document.body),
                     TimingFunctionUtils.timingFunctionMatch(initialTimingFunction, true),
                     callback || function () { }
@@ -415,14 +415,14 @@ define(function (require, exports, module) {
             
                 it("should load the initial timing function correctly", function () {
                     runs(function () {
-                        makeUI("cubic-bezier(.2, .3, .4, .5)");
+                        makeBezierCurveUI("cubic-bezier(.2, .3, .4, .5)");
                         expect(timingFunctionEditor).toBeTruthy();
                         expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, [".2", ".3", ".4", ".5"]);
                     });
                 });
                 it("should load externally updated timing function correctly", function () {
                     runs(function () {
-                        makeUI("cubic-bezier(.1, .3, .5, .7)");
+                        makeBezierCurveUI("cubic-bezier(.1, .3, .5, .7)");
                         var matchUpdate = TimingFunctionUtils.timingFunctionMatch("cubic-bezier(.2, .4, .6, .8)", true);
                         timingFunctionEditor.handleExternalUpdate(matchUpdate);
                         expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, [".2", ".4", ".6", ".8"]);
@@ -434,31 +434,31 @@ define(function (require, exports, module) {
                 
                 it("should convert linear function to cubic-bezier function parameters", function () {
                     runs(function () {
-                        makeUI("linear");
+                        makeBezierCurveUI("linear");
                         expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, ["0", "0", "1", "1"]);
                     });
                 });
                 it("should convert ease function to cubic-bezier function parameters", function () {
                     runs(function () {
-                        makeUI("ease");
+                        makeBezierCurveUI("ease");
                         expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, [".25", ".1", ".25", "1"]);
                     });
                 });
                 it("should convert ease-in function to cubic-bezier function parameters", function () {
                     runs(function () {
-                        makeUI("ease-in");
+                        makeBezierCurveUI("ease-in");
                         expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, [".42", "0", "1", "1"]);
                     });
                 });
                 it("should convert ease-out function to cubic-bezier function parameters", function () {
                     runs(function () {
-                        makeUI("ease-out");
+                        makeBezierCurveUI("ease-out");
                         expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, ["0", "0", ".58", "1"]);
                     });
                 });
                 it("should convert ease-in-out function to cubic-bezier function parameters", function () {
                     runs(function () {
-                        makeUI("ease-in-out");
+                        makeBezierCurveUI("ease-in-out");
                         expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, [".42", "0", ".58", "1"]);
                     });
                 });
@@ -497,14 +497,14 @@ define(function (require, exports, module) {
                 /**
                  * Test a mouse down event on the given UI element in a cubic-bezier function.
                  * @param {object} opts The parameters to test:
-                 *     item: The (string) name of the member of TimingFunctionEditor that
+                 *     item: The (string) name of the member of BezierCurveEditor that
                  *          references the element to test.
                  *     clickAt: An [x, y] array specifying the simulated x/y mouse position as
                  *          an offset of the item's width/height.
                  *     expected: The expected array of values for _cubicBezierCoords.
                  */
                 function testCubicBezierClick(opts) {
-                    makeUI("cubic-bezier(.42, 0, .58 ,1)");
+                    makeBezierCurveUI("cubic-bezier(.42, 0, .58 ,1)");
                     var $item = $(timingFunctionEditor[opts.item]);
                     eventAtOffset("click", $item, opts.clickAt);
                     expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, opts.expected);
@@ -513,17 +513,17 @@ define(function (require, exports, module) {
                 /**
                  * Test a drag event on the given UI element.
                  * @param {object} opts The parameters to test:
-                 *     downItem: The (string) name of the member of TimingFunctionEditor
+                 *     downItem: The (string) name of the member of BezierCurveEditor
                  *          that references the element to mousedown on to drag.
                  *     clickAt: An [x, y] array specifying the simulated x/y mouse position as an offset of the
                  *          item's width/height.
-                 *     dragItem: The (string) name of the member of TimingFunctionEditor
+                 *     dragItem: The (string) name of the member of BezierCurveEditor
                  *          that references the element to drag item to.
                  *     dragTo: An [x, y] array specifying the location to drag to, using the same convention as clickAt.
                  *     expected: The expected array of values for _cubicBezierCoords.
                  */
                 function testCubicBezierDrag(opts) {
-                    makeUI("cubic-bezier(.42, 0, .58 ,1)");
+                    makeBezierCurveUI("cubic-bezier(.42, 0, .58 ,1)");
                     var $downItem = $(timingFunctionEditor[opts.downItem]),
                         $dragItem = $(timingFunctionEditor[opts.dragItem]);
                     
@@ -586,15 +586,15 @@ define(function (require, exports, module) {
                  * Test a key event on the given UI element.
                  * @param {object} opts The parameters to test:
                  *     curve: The initial cubic-bezier curve
-                 *     item: The (string) name of the member of TimingFunctionEditor
+                 *     item: The (string) name of the member of BezierCurveEditor
                  *          that references the element to test.
                  *     key: The KeyEvent key code to simulate.
                  *     shift: Optional boolean specifying whether to simulate the shift
                  *          key being down (default false).
                  *     expected: The expected array of values for _cubicBezierCoords.
                  */
-                function testKey(opts) {
-                    makeUI(opts.curve, opts.callback);
+                function testBezierCurveKey(opts) {
+                    makeBezierCurveUI(opts.curve, opts.callback);
                     var $item = $(timingFunctionEditor[opts.item]);
                     $item.focus();
                     $item.trigger(makeKeyEvent(opts));
@@ -602,7 +602,7 @@ define(function (require, exports, module) {
                 }
                 
                 it("should increase P1 x-value by .02 on right arrow", function () {
-                    testKey({
+                    testBezierCurveKey({
                         curve:     "cubic-bezier(.42, 0, .58 ,1)",
                         item:      "P1",
                         key:       KeyEvent.DOM_VK_RIGHT,
@@ -611,7 +611,7 @@ define(function (require, exports, module) {
                     });
                 });
                 it("should increase P1 y-value by .1 on shift up arrow", function () {
-                    testKey({
+                    testBezierCurveKey({
                         curve:     "cubic-bezier(.42, 0, .58 ,1)",
                         item:      "P1",
                         key:       KeyEvent.DOM_VK_UP,
@@ -620,7 +620,7 @@ define(function (require, exports, module) {
                     });
                 });
                 it("should decrease P2 x-value by .02 on left arrow", function () {
-                    testKey({
+                    testBezierCurveKey({
                         curve:     "cubic-bezier(.42, 0, .58 ,1)",
                         item:      "P2",
                         key:       KeyEvent.DOM_VK_LEFT,
@@ -629,7 +629,7 @@ define(function (require, exports, module) {
                     });
                 });
                 it("should decrease P2 y-value by .1 on shift down arrow", function () {
-                    testKey({
+                    testBezierCurveKey({
                         curve:     "cubic-bezier(.42, 0, .58 ,1)",
                         item:      "P2",
                         key:       KeyEvent.DOM_VK_DOWN,
@@ -638,7 +638,7 @@ define(function (require, exports, module) {
                     });
                 });
                 it("should not decrease P1 x-value below 0 on left arrow", function () {
-                    testKey({
+                    testBezierCurveKey({
                         curve:     "cubic-bezier(0, 0, 1 ,1)",
                         item:      "P1",
                         key:       KeyEvent.DOM_VK_LEFT,
@@ -647,7 +647,7 @@ define(function (require, exports, module) {
                     });
                 });
                 it("should not increase P2 x-value above 0 on shift right arrow", function () {
-                    testKey({
+                    testBezierCurveKey({
                         curve:     "cubic-bezier(0, 0, 1 ,1)",
                         item:      "P2",
                         key:       KeyEvent.DOM_VK_RIGHT,
@@ -664,7 +664,7 @@ define(function (require, exports, module) {
                     };
                         
                     runs(function () {
-                        testKey({
+                        testBezierCurveKey({
                             curve:     "cubic-bezier(.42, 0, .58 ,1)",
                             item:      "P1",
                             key:       KeyEvent.DOM_VK_UP,

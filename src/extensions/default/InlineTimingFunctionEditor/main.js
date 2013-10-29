@@ -80,7 +80,7 @@ define(function (require, exports, module) {
         
         // code runs several matches complicated patterns, multiple times, so
         // first do a quick, simple check to see make sure we may have a match
-        if (!cursorLine.match(/cubic-bezier|linear|ease/)) {
+        if (!cursorLine.match(/cubic-bezier|linear|ease|step/)) {
             return null;
         }
 

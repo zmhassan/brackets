@@ -111,7 +111,7 @@ define(function (require, exports, module) {
      * Match a bezier curve function value from a CSS Declaration or Value.
      *
      * Matches returned from this function must be handled in
-     * TimingFunctionEditor._getCubicBezierCoords().
+     * BezierCurveEditor._getCubicBezierCoords().
      *
      * @param {string} str  Input string.
      * @param {!boolean} lax  Parsing mode where:
@@ -169,7 +169,7 @@ define(function (require, exports, module) {
      * Match a steps function value from a CSS Declaration or Value.
      *
      * Matches returned from this function must be handled in
-     * TimingFunctionEditor._getCubicBezierCoords().
+     * BezierCurveEditor._getCubicBezierCoords().
      *
      * @param {string} str  Input string.
      * @param {!boolean} lax  Parsing mode where:
@@ -209,7 +209,7 @@ define(function (require, exports, module) {
      * Match a timing function value from a CSS Declaration or Value.
      *
      * Matches returned from this function must be handled in
-     * TimingFunctionEditor._getCubicBezierCoords().
+     * BezierCurveEditor._getCubicBezierCoords().
      *
      * @param {string} str  Input string.
      * @param {!boolean} lax  Parsing mode where:
