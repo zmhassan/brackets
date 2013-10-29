@@ -29,6 +29,7 @@ define(function (require, exports, module) {
     
     var InlineWidget         = brackets.getModule("editor/InlineWidget").InlineWidget,
         BezierCurveEditor    = require("BezierCurveEditor").BezierCurveEditor,
+        StepEditor           = require("StepEditor").StepEditor,
         TimingFunctionUtils  = require("TimingFunctionUtils");
         
 
@@ -182,8 +183,14 @@ define(function (require, exports, module) {
     InlineTimingFunctionEditor.prototype.load = function (hostEditor) {
         InlineTimingFunctionEditor.prototype.parentClass.load.apply(this, arguments);
         
-        // Create timing function editor control
-        this.timingFunctionEditor = new BezierCurveEditor(this.$htmlContent, this._timingFunction, this._handleTimingFunctionChange);
+        // Create appropriate timing function editor control
+        if (this._timingFunction.isBezier) {
+            this.timingFunctionEditor = new BezierCurveEditor(this.$htmlContent, this._timingFunction, this._handleTimingFunctionChange);
+        } else if (this._timingFunction.isStep) {
+            this.timingFunctionEditor = new StepEditor(this.$htmlContent, this._timingFunction, this._handleTimingFunctionChange);
+        } else {
+            window.console.log("InlineTimingFunctionEditor.load tried to load an unkown timing function type");
+        }
     };
 
     /**

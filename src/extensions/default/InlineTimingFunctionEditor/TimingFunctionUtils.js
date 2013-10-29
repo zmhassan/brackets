@@ -31,7 +31,7 @@ define(function (require, exports, module) {
     "use strict";
     
     /**
-     * Regular expression that matches CSS cubic-beziers functions (4 parameters).
+     * Regular expressions for matching timing functions
      * @const @type {RegExp}
      */
     var BEZIER_CURVE_REGEX  = /cubic-bezier\(\s*(\S+)\s*,\s*(\S+)\s*,\s*(\S+)\s*,\s*(\S+)\s*\)/,
@@ -42,6 +42,13 @@ define(function (require, exports, module) {
         STEPS_REGEX         = /steps\(\s*(\d+)\s*(?:,\s*(start|end)\s*)?\)/,
         STEP_STRICT_REGEX   = /[: ,](?:step-start|step-end)[ ,;]/,
         STEP_LAX_REGEX      = /step-start|step-end/;
+
+    /**
+     * Type constants
+     * @const @type {number}
+     */
+    var BEZIER  = 1,
+        STEP    = 2;
 
     /**
      * If string is a number, then convert it.
@@ -108,6 +115,27 @@ define(function (require, exports, module) {
     }
 
     /**
+     * Tag this match with type and return it for chaining
+     *
+     * @param {!RegExp.match} match  RegExp Match object with steps function parameters
+     *                              in array position 1 (and optionally 2).
+     * @param {number} type Either BEZIER or STEP
+     * @return {RegExp.match} Same object that was passed in.
+     */
+    function tagMatch(match, type) {
+        switch (type) {
+        case BEZIER:
+            match.isBezier = true;
+            break;
+        case STEP:
+            match.isStep = true;
+            break;
+        }
+        
+        return match;
+    }
+
+    /**
      * Match a bezier curve function value from a CSS Declaration or Value.
      *
      * Matches returned from this function must be handled in
@@ -126,7 +154,7 @@ define(function (require, exports, module) {
         // First look for cubic-bezier(x1,y1,x2,y2).
         var match = str.match(BEZIER_CURVE_REGEX);
         if (match) {
-            return _validateCubicBezierParams(match) ? match : null;
+            return _validateCubicBezierParams(match) ? tagMatch(match, BEZIER) : null;
         }
 
         // Next look for the ease functions (which are special cases of cubic-bezier())
@@ -134,14 +162,14 @@ define(function (require, exports, module) {
             // For lax parsing, just look for the keywords
             match = str.match(EASE_LAX_REGEX);
             if (match) {
-                return match;
+                return tagMatch(match, BEZIER);
             }
         } else {
             // For strict parsing, start with a syntax verifying search
             match = str.match(EASE_STRICT_REGEX);
             if (match) {
                 // return exact match to keyword that we need for later replacement
-                return str.match(EASE_LAX_REGEX);
+                return tagMatch(str.match(EASE_LAX_REGEX), BEZIER);
             }
         }
 
@@ -150,7 +178,7 @@ define(function (require, exports, module) {
             // For lax parsing, just look for the keyword
             match = str.match(LINEAR_LAX_REGEX);
             if (match) {
-                return match;
+                return tagMatch(match, BEZIER);
             }
         } else {
             // The linear keyword can occur in other values, so for strict parsing we
@@ -158,7 +186,7 @@ define(function (require, exports, module) {
             match = str.match(LINEAR_STRICT_REGEX);
             if (match) {
                 // return exact match to keyword that we need for later replacement
-                return str.match(LINEAR_LAX_REGEX);
+                return tagMatch(str.match(LINEAR_LAX_REGEX), BEZIER);
             }
         }
 
@@ -183,7 +211,7 @@ define(function (require, exports, module) {
         // First look for steps(i,pos).
         var match = str.match(STEPS_REGEX);
         if (match) {
-            return _validateStepsParams(match) ? match : null;
+            return _validateStepsParams(match) ? tagMatch(match, STEP) : null;
         }
 
         // Next look for the step functions (which are special cases of steps())
@@ -191,14 +219,14 @@ define(function (require, exports, module) {
             // For lax parsing, just look for the keywords
             match = str.match(STEP_LAX_REGEX);
             if (match) {
-                return match;
+                return tagMatch(match, STEP);
             }
         } else {
             // For strict parsing, start with a syntax verifying search
             match = str.match(STEP_STRICT_REGEX);
             if (match) {
                 // return exact match to keyword that we need for later replacement
-                return str.match(STEP_LAX_REGEX);
+                return tagMatch(str.match(STEP_LAX_REGEX), STEP);
             }
         }
 

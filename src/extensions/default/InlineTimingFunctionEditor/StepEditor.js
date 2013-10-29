@@ -88,6 +88,7 @@ define(function (require, exports, module) {
          *
          * @return {left:string, top:string}
          */
+/*
         getOffsets: function () {
             var p = this.padding,
                 w = this.canvas.width,
@@ -101,6 +102,7 @@ define(function (require, exports, module) {
                 top:  h * (1 - this.stepParams.coordinates[3] * (1 - p[0] - p[2]) - p[0]) + "px"
             }];
         },
+*/
 
         /**
          * Round off number to hundreths place, convert to string, and strip leading zero
@@ -142,7 +144,7 @@ define(function (require, exports, module) {
          * @param {Object} settings Paint settings
          */
         plot: function (settings) {
-            var xy = this.stepParams.coordinates,
+            var sp = this.stepParams,
                 ctx = this.canvas.getContext("2d"),
                 setting;
 
@@ -168,6 +170,7 @@ define(function (require, exports, module) {
             ctx.clearRect(-0.5, -0.5, 2, 2);
 
             // Draw control handles
+/*
             ctx.beginPath();
             ctx.fillStyle = settings.handleTimingFunction;
             ctx.lineWidth = settings.handleThickness;
@@ -192,6 +195,7 @@ define(function (require, exports, module) {
             ctx.closePath();
 
             ctx.fill();
+*/
 
 /*
             // Draw bezier curve
@@ -281,6 +285,7 @@ define(function (require, exports, module) {
      * @param {number} x New horizontal position
      * @param {number} y New vertical position
      */
+/*
     function handlePointMove(e, x, y) {
         var self = e.target,
             stepEditor = self.stepEditor;
@@ -331,6 +336,7 @@ define(function (require, exports, module) {
             animationRequest = window.webkitRequestAnimationFrame(mouseMoveRedraw);
         }
     }
+*/
 
     /**
      * Update Time (x-axis) and Progression (y-axis) data for mouse position
@@ -360,6 +366,7 @@ define(function (require, exports, module) {
 
         updateTimeProgression(self, x, y);
 
+/*
         if (stepEditor.dragElement) {
             if (e.pageX === 0 && e.pageY === 0) {
                 return;
@@ -367,6 +374,7 @@ define(function (require, exports, module) {
 
             handlePointMove(e, x, y);
         }
+*/
     }
 
     /**
@@ -374,6 +382,7 @@ define(function (require, exports, module) {
      *
      * @param {Event} e Mouse move event
      */
+/*
     function _pointMouseMove(e) {
         var self = e.target,
             stepEditor = self.stepEditor,
@@ -391,23 +400,27 @@ define(function (require, exports, module) {
 
         handlePointMove(e, x, y);
     }
+*/
 
     /**
      * Handle mouse down in <button> element
      *
      * @param {Event} e Mouse down event
      */
+/*
     function _pointMouseDown(e) {
         var self = e.target;
 
         self.stepEditor.dragElement = self;
     }
+*/
 
     /**
      * Handle mouse up in <button> element
      *
      * @param {Event} e Mouse up event
      */
+/*
     function _pointMouseUp(e) {
         var self = e.target;
 
@@ -419,12 +432,14 @@ define(function (require, exports, module) {
             self.stepEditor._updateCanvas();
         }
     }
+*/
 
     /**
      * Handle key down in <button> element
      *
      * @param {Event} e Key down event
      */
+/*
     function _pointKeyDown(e) {
         var code = e.keyCode,
             self = e.target,
@@ -483,6 +498,7 @@ define(function (require, exports, module) {
 
         return false;
     }
+*/
 
 
     /**
@@ -632,8 +648,8 @@ define(function (require, exports, module) {
         if (this._stepParams) {
             this.stepCanvas.stepParams = window.stepParams = new StepParameters(this._stepParams);
 
-            var offsets = this.stepCanvas.getOffsets();
-
+//            var offsets = this.stepCanvas.getOffsets();
+//
 //            $(this.P1).css({
 //                left: offsets[0].left,
 //                top:  offsets[0].top
