@@ -29,7 +29,6 @@ define(function (require, exports, module) {
     
     var EditorManager   = brackets.getModule("editor/EditorManager"),
         KeyEvent        = brackets.getModule("utils/KeyEvent"),
-        StringUtils     = brackets.getModule("utils/StringUtils"),
         Strings         = brackets.getModule("strings");
 
     var TimingFunctionUtils            = require("TimingFunctionUtils"),
@@ -575,17 +574,7 @@ define(function (require, exports, module) {
     };
 
     /**
-     * Normalize the given bezierCurve string.
-     *
-     * @param {string} bezierCurve The bezierCurve to be corrected.
-     * @return {string} a normalized bezierCurve string.
-     */
-    BezierCurveEditor.prototype._normalizeTimingFunctionString = function (bezierCurve) {
-        return bezierCurve.toLowerCase();
-    };
-
-    /**
-     * Sets _bezierCurve based on a string input, and updates the doc
+     * Generates cubic-bezier function based on coords, and updates the doc
      */
     BezierCurveEditor.prototype._commitTimingFunction = function () {
         var bezierCurveVal = "cubic-bezier(" +
@@ -594,7 +583,6 @@ define(function (require, exports, module) {
             this._cubicBezierCoords[2] + ", " +
             this._cubicBezierCoords[3] + ")";
         this._callback(bezierCurveVal);
-        this._bezierCurve = bezierCurveVal;
     };
 
     /**

@@ -29,63 +29,49 @@ define(function (require, exports, module) {
     
     var EditorManager   = brackets.getModule("editor/EditorManager"),
         KeyEvent        = brackets.getModule("utils/KeyEvent"),
-        StringUtils     = brackets.getModule("utils/StringUtils"),
         Strings         = brackets.getModule("strings");
 
     var TimingFunctionUtils            = require("TimingFunctionUtils"),
         InlineTimingFunctionEditor     = require("InlineTimingFunctionEditor").InlineTimingFunctionEditor;
     
     /** Mustache template that forms the bare DOM structure of the UI */
-    var BezierCurveEditorTemplate   = require("text!BezierCurveEditorTemplate.html");
+    var StepEditorTemplate   = require("text!StepEditorTemplate.html");
     
     /** @const @type {number} */
-    var STEP_MULTIPLIER =   5,
-        HEIGHT_ABOVE    =  75,    // extra height above main grid
-        HEIGHT_BELOW    =  75,    // extra height below main grid
+    var STEP_MULTIPLIER =   5,      // TODO: remove
+        HEIGHT_ABOVE    =  75,      // TODO: remove
+        HEIGHT_BELOW    =  75,      // TODO: remove
         HEIGHT_MAIN     = 150,    // height of main grid
         WIDTH_MAIN      = 150;    // width of main grid
 
     var animationRequest = null;
 
     /**
-     * CubicBezier object constructor
+     * StepParameters object constructor
      *
-     * @param {string|Array.number[4]} coordinates Four parameters passes to cubic-bezier()
+     * @param {{ count: number, timing: string}} params Parameters passed to steps()
      *      either in string or array format.
      */
-    function CubicBezier(coordinates) {
-        if (typeof coordinates === "string") {
-            this.coordinates = coordinates.split(",");
-        } else {
-            this.coordinates = coordinates;
+    function StepParameters(params) {
+        if (!params) {
+            throw "No parameters were defined";
         }
 
-        if (!this.coordinates) {
-            throw "No offsets were defined";
-        }
-
-        this.coordinates = this.coordinates.map(function (n) { return +n; });
-
-        var i;
-        for (i = 3; i >= 0; i--) {
-            var xy = this.coordinates[i];
-            if (isNaN(xy) || (((i % 2) === 0) && (xy < 0 || xy > 1))) {
-                throw "Wrong coordinate at " + i + "(" + xy + ")";
-            }
-        }
+        this.count  = params.count;
+        this.timing = params.timing;
     }
     
     /**
-     * BezierCanvas object constructor
+     * StepCanvas object constructor
      *
      * @param {Element} canvas Inline editor <canvas> element
-     * @param {CubicBezier} bezier Associated CubicBezier object
+     * @param {StepParameters} stepParams Associated StepParameters object
      * @param {number|Array.number} padding Element padding
      */
-    function BezierCanvas(canvas, bezier, padding) {
-        this.canvas  = canvas;
-        this.bezier  = bezier;
-        this.padding = this.getPadding(padding);
+    function StepCanvas(canvas, stepParams, padding) {
+        this.canvas     = canvas;
+        this.stepParams = stepParams;
+        this.padding    = this.getPadding(padding);
 
         // Convert to a cartesian coordinate system with axes from 0 to 1
         var ctx = this.canvas.getContext("2d"),
@@ -95,7 +81,7 @@ define(function (require, exports, module) {
         ctx.translate(p[3] / (1 - p[1] - p[3]), (-1 - p[0] / (1 - p[0] - p[2])) - 0.5);
     }
 
-    BezierCanvas.prototype = {
+    StepCanvas.prototype = {
 
         /**
          * Calculates CSS offsets for <canvas> element
@@ -108,11 +94,11 @@ define(function (require, exports, module) {
                 h = this.canvas.height * 0.5;
 
             return [{
-                left: w * (this.bezier.coordinates[0]     * (1 - p[3] - p[1]) - p[3]) + "px",
-                top:  h * (1 - this.bezier.coordinates[1] * (1 - p[0] - p[2]) - p[0]) + "px"
+                left: w * (this.stepParams.coordinates[0]     * (1 - p[3] - p[1]) - p[3]) + "px",
+                top:  h * (1 - this.stepParams.coordinates[1] * (1 - p[0] - p[2]) - p[0]) + "px"
             }, {
-                left: w * (this.bezier.coordinates[2]     * (1 - p[3] - p[1]) - p[3]) + "px",
-                top:  h * (1 - this.bezier.coordinates[3] * (1 - p[0] - p[2]) - p[0]) + "px"
+                left: w * (this.stepParams.coordinates[2]     * (1 - p[3] - p[1]) - p[3]) + "px",
+                top:  h * (1 - this.stepParams.coordinates[3] * (1 - p[0] - p[2]) - p[0]) + "px"
             }];
         },
 
@@ -156,7 +142,7 @@ define(function (require, exports, module) {
          * @param {Object} settings Paint settings
          */
         plot: function (settings) {
-            var xy = this.bezier.coordinates,
+            var xy = this.stepParams.coordinates,
                 ctx = this.canvas.getContext("2d"),
                 setting;
 
@@ -165,8 +151,8 @@ define(function (require, exports, module) {
                 handleThickness: 0.008,
                 vBorderThickness: 0.02,
                 hBorderThickness: 0.01,
-                bezierTimingFunction: "#1461FC",
-                bezierThickness: 0.03
+                stepTimingFunction: "#1461FC",
+                stepThickness: 0.03
             };
 
             settings = settings || {};
@@ -207,14 +193,16 @@ define(function (require, exports, module) {
 
             ctx.fill();
 
+/*
             // Draw bezier curve
             ctx.beginPath();
-            ctx.lineWidth = settings.bezierThickness;
+            ctx.lineWidth = settings.stepThickness;
             ctx.strokeStyle = settings.bezierColor;
             ctx.moveTo(0, 0);
             ctx.bezierCurveTo(xy[0], xy[1], xy[2], xy[3], 1, 1);
             ctx.stroke();
             ctx.closePath();
+*/
         },
 
         /**
@@ -247,17 +235,18 @@ define(function (require, exports, module) {
      *
      * @param {Event} e Mouse click event
      */
-    function _curveClick(e) {
+/*
+    function _canvasClick(e) {
         var self = e.target,
-            bezierEditor = self.bezierEditor;
+            stepEditor = self.stepEditor;
 
-        var curveBoundingBox = bezierEditor._getCurveBoundingBox(),
+        var curveBoundingBox = stepEditor._getCanvasBoundingBox(),
             left = curveBoundingBox.left,
             top  = curveBoundingBox.top,
             x    = e.pageX - left,
             y    = e.pageY - top - HEIGHT_ABOVE,
-            $P1  = $(bezierEditor.P1),
-            $P2  = $(bezierEditor.P2);
+            $P1  = $(stepEditor.P1),
+            $P2  = $(stepEditor.P2);
 
         // Helper function to calculate distance between 2-D points
         function distance(x1, y1, x2, y2) {
@@ -276,13 +265,14 @@ define(function (require, exports, module) {
         $P.get(0).focus();
 
         // update coords
-        bezierEditor._cubicBezierCoords = bezierEditor.bezierCanvas
-            .offsetsToCoordinates(bezierEditor.P1)
-            .concat(bezierEditor.bezierCanvas.offsetsToCoordinates(bezierEditor.P2));
+        stepEditor._stepParams = stepEditor.stepCanvas
+            .offsetsToCoordinates(stepEditor.P1)
+            .concat(stepEditor.stepCanvas.offsetsToCoordinates(stepEditor.P2));
 
-        bezierEditor._commitTimingFunction();
-        bezierEditor._updateCanvas();
+        stepEditor._commitTimingFunction();
+        stepEditor._updateCanvas();
     }
+*/
 
     /**
      * Helper function for handling point move
@@ -293,29 +283,29 @@ define(function (require, exports, module) {
      */
     function handlePointMove(e, x, y) {
         var self = e.target,
-            bezierEditor = self.bezierEditor;
+            stepEditor = self.stepEditor;
 
         // Helper function to redraw curve
         function mouseMoveRedraw() {
-            if (!bezierEditor.dragElement) {
+            if (!stepEditor.dragElement) {
                 animationRequest = null;
                 return;
             }
 
             // Update code
-            bezierEditor._commitTimingFunction();
+            stepEditor._commitTimingFunction();
 
-            bezierEditor._updateCanvas();
+            stepEditor._updateCanvas();
             animationRequest = window.webkitRequestAnimationFrame(mouseMoveRedraw);
         }
 
         // This is a dragging state, but left button is no longer down, so mouse
         // exited element, was released, and re-entered element. Treat like a drop.
-        if (bezierEditor.dragElement && (e.which !== 1)) {
-            bezierEditor.dragElement = null;
-            bezierEditor._commitTimingFunction();
-            bezierEditor._updateCanvas();
-            bezierEditor = null;
+        if (stepEditor.dragElement && (e.which !== 1)) {
+            stepEditor.dragElement = null;
+            stepEditor._commitTimingFunction();
+            stepEditor._updateCanvas();
+            stepEditor = null;
             return;
         }
 
@@ -324,17 +314,18 @@ define(function (require, exports, module) {
         // arbitrarily constrained to -0.5 to 1.5 range.
         x = Math.min(Math.max(0, x), WIDTH_MAIN);
 
-        if (bezierEditor.dragElement) {
-            $(bezierEditor.dragElement).css({
+        if (stepEditor.dragElement) {
+            $(stepEditor.dragElement).css({
                 left: x + "px",
                 top:  y + "px"
             });
         }
 
         // update coords
-        bezierEditor._cubicBezierCoords = bezierEditor.bezierCanvas
-            .offsetsToCoordinates(bezierEditor.P1)
-            .concat(bezierEditor.bezierCanvas.offsetsToCoordinates(bezierEditor.P2));
+//        stepEditor._stepParams = stepEditor.stepCanvas
+//            .offsetsToCoordinates(stepEditor.P1)
+//            .concat(stepEditor.stepCanvas.offsetsToCoordinates(stepEditor.P2));
+        stepEditor._stepParams = stepEditor.stepCanvas.stepParams;
 
         if (!animationRequest) {
             animationRequest = window.webkitRequestAnimationFrame(mouseMoveRedraw);
@@ -358,10 +349,10 @@ define(function (require, exports, module) {
      *
      * @param {Event} e Mouse move event
      */
-    function _curveMouseMove(e) {
+    function _canvasMouseMove(e) {
         var self = e.target,
-            bezierEditor = self.bezierEditor,
-            curveBoundingBox = bezierEditor._getCurveBoundingBox(),
+            stepEditor = self.stepEditor,
+            curveBoundingBox = stepEditor._getCanvasBoundingBox(),
             left   = curveBoundingBox.left,
             top    = curveBoundingBox.top,
             x = e.pageX - left,
@@ -369,7 +360,7 @@ define(function (require, exports, module) {
 
         updateTimeProgression(self, x, y);
 
-        if (bezierEditor.dragElement) {
+        if (stepEditor.dragElement) {
             if (e.pageX === 0 && e.pageY === 0) {
                 return;
             }
@@ -385,14 +376,14 @@ define(function (require, exports, module) {
      */
     function _pointMouseMove(e) {
         var self = e.target,
-            bezierEditor = self.bezierEditor,
-            curveBoundingBox = bezierEditor._getCurveBoundingBox(),
+            stepEditor = self.stepEditor,
+            curveBoundingBox = stepEditor._getCanvasBoundingBox(),
             left = curveBoundingBox.left,
             top  = curveBoundingBox.top,
             x = e.pageX - left,
             y = e.pageY - top - HEIGHT_ABOVE;
 
-        updateTimeProgression(bezierEditor.curve, x, y);
+        updateTimeProgression(stepEditor.canvas, x, y);
 
         if (e.pageX === 0 && e.pageY === 0) {
             return;
@@ -409,7 +400,7 @@ define(function (require, exports, module) {
     function _pointMouseDown(e) {
         var self = e.target;
 
-        self.bezierEditor.dragElement = self;
+        self.stepEditor.dragElement = self;
     }
 
     /**
@@ -422,10 +413,10 @@ define(function (require, exports, module) {
 
         self.focus();
 
-        if (self.bezierEditor.dragElement) {
-            self.bezierEditor.dragElement = null;
-            self.bezierEditor._commitTimingFunction();
-            self.bezierEditor._updateCanvas();
+        if (self.stepEditor.dragElement) {
+            self.stepEditor.dragElement = null;
+            self.stepEditor._commitTimingFunction();
+            self.stepEditor._updateCanvas();
         }
     }
 
@@ -437,7 +428,7 @@ define(function (require, exports, module) {
     function _pointKeyDown(e) {
         var code = e.keyCode,
             self = e.target,
-            bezierEditor = self.bezierEditor;
+            stepEditor = self.stepEditor;
 
         if (code >= KeyEvent.DOM_VK_LEFT && code <= KeyEvent.DOM_VK_DOWN) {
             e.preventDefault();
@@ -481,12 +472,13 @@ define(function (require, exports, module) {
             }
 
             // update coords
-            bezierEditor._cubicBezierCoords = bezierEditor.bezierCanvas
-                .offsetsToCoordinates(bezierEditor.P1)
-                .concat(bezierEditor.bezierCanvas.offsetsToCoordinates(bezierEditor.P2));
+//            stepEditor._stepParams = stepEditor.stepCanvas
+//                .offsetsToCoordinates(stepEditor.P1)
+//                .concat(stepEditor.stepCanvas.offsetsToCoordinates(stepEditor.P2));
+            stepEditor._stepParams = stepEditor.stepCanvas.stepParams;
 
-            bezierEditor._commitTimingFunction();
-            bezierEditor._updateCanvas();
+            stepEditor._commitTimingFunction();
+            stepEditor._updateCanvas();
         }
 
         return false;
@@ -494,139 +486,125 @@ define(function (require, exports, module) {
 
 
     /**
-     * Constructor for TimingFunctionEditor Object. This control may be used standalone
+     * Constructor for StepEditor Object. This control may be used standalone
      * or within an InlineTimingFunctionEditor inline widget.
      *
-     * @param {!jQuery} $parent  DOM node into which to append the root of the bezier curve editor UI
-     * @param {!RegExpMatch} bezierCurve  RegExp match object of initially selected bezierCurve
-     * @param {!function(string)} callback  Called whenever selected bezierCurve changes
+     * @param {!jQuery} $parent  DOM node into which to append the root of the step editor UI
+     * @param {!RegExpMatch} stepMatch  RegExp match object of initially selected step function
+     * @param {!function(string)} callback  Called whenever selected step function changes
      */
-    function TimingFunctionEditor($parent, bezierCurve, callback) {
+    function StepEditor($parent, stepMatch, callback) {
         // Create the DOM structure, filling in localized strings via Mustache
-        this.$element = $(Mustache.render(BezierCurveEditorTemplate, Strings));
+        this.$element = $(Mustache.render(StepEditorTemplate, Strings));
         $parent.append(this.$element);
         
         this._callback = callback;
         this.dragElement = null;
 
-        // current cubic-bezier() function params
-        this._cubicBezierCoords = this._getCubicBezierCoords(bezierCurve);
+        // current step function params
+        this._stepParams = this._getStepParams(stepMatch);
 
-        this.P1 = this.$element.find(".P1")[0];
-        this.P2 = this.$element.find(".P2")[0];
-        this.curve = this.$element.find(".curve")[0];
+//        this.P1 = this.$element.find(".P1")[0];
+//        this.P2 = this.$element.find(".P2")[0];
+        this.canvas = this.$element.find(".steps")[0];
 
-        this.P1.bezierEditor = this.P2.bezierEditor = this.curve.bezierEditor = this;
+//        this.P1.stepEditor = this.P2.stepEditor = this;
+        this.canvas.stepEditor = this;
 
-        this.bezierCanvas = new BezierCanvas(this.curve, null, [0, 0]);
+        this.stepCanvas = new StepCanvas(this.canvas, null, [0, 0]);
         
         // redraw canvas
         this._updateCanvas();
 
-        $(this.curve)
-            .on("click", _curveClick)
-            .on("mousemove", _curveMouseMove);
-        $(this.P1)
-            .on("mousemove", _pointMouseMove)
-            .on("mousedown", _pointMouseDown)
-            .on("mouseup", _pointMouseUp)
-            .on("keydown", _pointKeyDown);
-        $(this.P2)
-            .on("mousemove", _pointMouseMove)
-            .on("mousedown", _pointMouseDown)
-            .on("mouseup", _pointMouseUp)
-            .on("keydown", _pointKeyDown);
+        $(this.canvas)
+//            .on("click",     _canvasClick)
+            .on("mousemove", _canvasMouseMove);
+//        $(this.P1)
+//            .on("mousemove", _pointMouseMove)
+//            .on("mousedown", _pointMouseDown)
+//            .on("mouseup",   _pointMouseUp)
+//            .on("keydown",   _pointKeyDown);
+//        $(this.P2)
+//            .on("mousemove", _pointMouseMove)
+//            .on("mousedown", _pointMouseDown)
+//            .on("mouseup",   _pointMouseUp)
+//            .on("keydown",   _pointKeyDown);
     }
 
     /**
      * Destructor called by InlineTimingFunctionEditor.onClosed()
      */
-    TimingFunctionEditor.prototype.destroy = function () {
+    StepEditor.prototype.destroy = function () {
 
-        this.P1.bezierEditor = this.P2.bezierEditor = this.curve.bezierEditor = null;
+//        this.P1.stepEditor = this.P2.stepEditor = null;
+        this.canvas.stepEditor = null;
 
-        $(this.curve)
-            .off("click", _curveClick)
-            .off("mousemove", _curveMouseMove);
-        $(this.P1)
-            .off("mousemove", _pointMouseMove)
-            .off("mousedown", _pointMouseDown)
-            .off("mouseup", _pointMouseUp)
-            .off("keydown", _pointKeyDown);
-        $(this.P2)
-            .off("mousemove", _pointMouseMove)
-            .off("mousedown", _pointMouseDown)
-            .off("mouseup", _pointMouseUp)
-            .off("keydown", _pointKeyDown);
+        $(this.canvas)
+//            .off("click",     _canvasClick)
+            .off("mousemove", _canvasMouseMove);
+//        $(this.P1)
+//            .off("mousemove", _pointMouseMove)
+//            .off("mousedown", _pointMouseDown)
+//            .off("mouseup",   _pointMouseUp)
+//            .off("keydown",   _pointKeyDown);
+//        $(this.P2)
+//            .off("mousemove", _pointMouseMove)
+//            .off("mousedown", _pointMouseDown)
+//            .off("mouseup",   _pointMouseUp)
+//            .off("keydown",   _pointKeyDown);
     };
 
 
-    /** Returns the root DOM node of the TimingFunctionEditor UI */
-    TimingFunctionEditor.prototype.getRootElement = function () {
+    /** Returns the root DOM node of the StepEditor UI */
+    StepEditor.prototype.getRootElement = function () {
         return this.$element;
     };
 
     /**
-     * Default focus needs to go somewhere, so give it to P1
+     * Default focus needs to go somewhere, so give it to canvas
      */
-    TimingFunctionEditor.prototype.focus = function () {
-        this.P1.focus();
+    StepEditor.prototype.focus = function () {
+        this.canvas.focus();
         return true;
     };
 
     /**
-     * Normalize the given bezierCurve string.
-     *
-     * @param {string} bezierCurve The bezierCurve to be corrected.
-     * @return {string} a normalized bezierCurve string.
+     * Generates step function based on parameters, and updates the doc
      */
-    TimingFunctionEditor.prototype._normalizeTimingFunctionString = function (bezierCurve) {
-        return bezierCurve.toLowerCase();
+    StepEditor.prototype._commitTimingFunction = function () {
+        var stepFuncVal = "steps(" +
+            this._stepParams.count.toString() + ", " +
+            this._stepParams.timing + ")";
+        this._callback(stepFuncVal);
     };
 
     /**
-     * Sets _bezierCurve based on a string input, and updates the doc
-     */
-    TimingFunctionEditor.prototype._commitTimingFunction = function () {
-        var bezierCurveVal = "cubic-bezier(" +
-            this._cubicBezierCoords[0] + ", " +
-            this._cubicBezierCoords[1] + ", " +
-            this._cubicBezierCoords[2] + ", " +
-            this._cubicBezierCoords[3] + ")";
-        this._callback(bezierCurveVal);
-        this._bezierCurve = bezierCurveVal;
-    };
-
-    /**
-     * Handle all matches returned from TimingFunctionUtils.cubicBezierMatch() and
+     * Handle all matches returned from TimingFunctionUtils.stepMatch() and
      * return array of coords
      *
-     * @param {RegExp.match} match Matches returned from cubicBezierMatch()
-     * @return {Array.number[4]}
+     * @param {RegExp.match} match Matches returned from stepMatch()
+     * @return {{count: number, timing: string}}
      */
-    TimingFunctionEditor.prototype._getCubicBezierCoords = function (match) {
+    StepEditor.prototype._getStepParams = function (match) {
 
-        if (match[0].match(/^cubic-bezier/)) {
-            // cubic-bezier()
-            return match.slice(1, 5);
+        if (match[0].match(/^steps/)) {
+            // steps()
+            return {
+                count:  parseInt(match[0], 10),
+                timing: match[1] || "end"
+            };
         } else {
-            // handle special cases of cubic-bezier calls
+            // handle special cases of steps functions
             switch (match[0]) {
-            case "linear":
-                return [ "0", "0", "1", "1" ];
-            case "ease":
-                return [ ".25", ".1", ".25", "1" ];
-            case "ease-in":
-                return [ ".42", "0", "1", "1" ];
-            case "ease-out":
-                return [ "0", "0", ".58", "1" ];
-            case "ease-in-out":
-                return [ ".42", "0", ".58", "1" ];
+            case "step-start":
+                return { count: 1, timing: "start" };
+            case "step-end":
+                return { count: 1, timing: "end" };
             }
         }
 
-        window.console.log("brackets-cubic-bezier: getCubicBezierCoords() passed invalid RegExp match array");
-        return [ "0", "0", "0", "0" ];
+        window.console.log("step timing function: _getStepParams() passed invalid RegExp match array");
+        return { count: 1, timing: "end" };
     };
 
     /**
@@ -634,8 +612,8 @@ define(function (require, exports, module) {
      *
      * @return {left: number, top: number, width: number, height: number}
      */
-    TimingFunctionEditor.prototype._getCurveBoundingBox = function () {
-        var $canvas = this.$element.find(".curve"),
+    StepEditor.prototype._getCanvasBoundingBox = function () {
+        var $canvas = this.$element.find(".steps"),
             canvasOffset = $canvas.offset();
 
         return {
@@ -649,36 +627,36 @@ define(function (require, exports, module) {
     /**
      * Update <canvas> after a change
      */
-    TimingFunctionEditor.prototype._updateCanvas = function () {
+    StepEditor.prototype._updateCanvas = function () {
         // collect data, build model
-        if (this._cubicBezierCoords) {
-            this.bezierCanvas.bezier = window.bezier = new CubicBezier(this._cubicBezierCoords);
+        if (this._stepParams) {
+            this.stepCanvas.stepParams = window.stepParams = new StepParameters(this._stepParams);
 
-            var offsets = this.bezierCanvas.getOffsets();
+            var offsets = this.stepCanvas.getOffsets();
 
-            $(this.P1).css({
-                left: offsets[0].left,
-                top:  offsets[0].top
-            });
-            $(this.P2).css({
-                left: offsets[1].left,
-                top:  offsets[1].top
-            });
+//            $(this.P1).css({
+//                left: offsets[0].left,
+//                top:  offsets[0].top
+//            });
+//            $(this.P2).css({
+//                left: offsets[1].left,
+//                top:  offsets[1].top
+//            });
 
-            this.bezierCanvas.plot();
+            this.stepCanvas.plot();
         }
     };
     
     /**
      * Handle external update
      *
-     * @param {!RegExpMatch} bezierCurve  RegExp match object of updated bezierCurve
+     * @param {!RegExpMatch} stepMatch  RegExp match object of updated step function
      */
-    TimingFunctionEditor.prototype.handleExternalUpdate = function (bezierCurve) {
-        this._cubicBezierCoords = this._getCubicBezierCoords(bezierCurve);
+    StepEditor.prototype.handleExternalUpdate = function (stepMatch) {
+        this._stepParams = this._getStepParams(stepMatch);
         this._updateCanvas();
     };
 
     
-    exports.TimingFunctionEditor = TimingFunctionEditor;
+    exports.StepEditor = StepEditor;
 });

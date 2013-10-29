@@ -385,7 +385,7 @@ define(function (require, exports, module) {
         });
         
         describe("TimingFunction editor UI", function () {
-            var timingFunctionEditor;
+            var bezierCurveEditor;
             
             /**
              * Creates a hidden BezierCurveEditor and appends it to the body. Note that this is a
@@ -396,18 +396,18 @@ define(function (require, exports, module) {
              *     callback. If none is supplied, a dummy function is passed.
              */
             function makeBezierCurveUI(initialTimingFunction, callback) {
-                timingFunctionEditor = new BezierCurveEditor(
+                bezierCurveEditor = new BezierCurveEditor(
                     $(document.body),
                     TimingFunctionUtils.timingFunctionMatch(initialTimingFunction, true),
                     callback || function () { }
                 );
                 
                 // Hide it
-                timingFunctionEditor.getRootElement().css("display", "none");
+                bezierCurveEditor.getRootElement().css("display", "none");
             }
             
             afterEach(function () {
-                timingFunctionEditor.getRootElement().remove();
+                bezierCurveEditor.getRootElement().remove();
             });
             
             
@@ -416,16 +416,16 @@ define(function (require, exports, module) {
                 it("should load the initial timing function correctly", function () {
                     runs(function () {
                         makeBezierCurveUI("cubic-bezier(.2, .3, .4, .5)");
-                        expect(timingFunctionEditor).toBeTruthy();
-                        expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, [".2", ".3", ".4", ".5"]);
+                        expect(bezierCurveEditor).toBeTruthy();
+                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, [".2", ".3", ".4", ".5"]);
                     });
                 });
                 it("should load externally updated timing function correctly", function () {
                     runs(function () {
                         makeBezierCurveUI("cubic-bezier(.1, .3, .5, .7)");
                         var matchUpdate = TimingFunctionUtils.timingFunctionMatch("cubic-bezier(.2, .4, .6, .8)", true);
-                        timingFunctionEditor.handleExternalUpdate(matchUpdate);
-                        expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, [".2", ".4", ".6", ".8"]);
+                        bezierCurveEditor.handleExternalUpdate(matchUpdate);
+                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, [".2", ".4", ".6", ".8"]);
                     });
                 });
             });
@@ -435,31 +435,31 @@ define(function (require, exports, module) {
                 it("should convert linear function to cubic-bezier function parameters", function () {
                     runs(function () {
                         makeBezierCurveUI("linear");
-                        expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, ["0", "0", "1", "1"]);
+                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, ["0", "0", "1", "1"]);
                     });
                 });
                 it("should convert ease function to cubic-bezier function parameters", function () {
                     runs(function () {
                         makeBezierCurveUI("ease");
-                        expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, [".25", ".1", ".25", "1"]);
+                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, [".25", ".1", ".25", "1"]);
                     });
                 });
                 it("should convert ease-in function to cubic-bezier function parameters", function () {
                     runs(function () {
                         makeBezierCurveUI("ease-in");
-                        expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, [".42", "0", "1", "1"]);
+                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, [".42", "0", "1", "1"]);
                     });
                 });
                 it("should convert ease-out function to cubic-bezier function parameters", function () {
                     runs(function () {
                         makeBezierCurveUI("ease-out");
-                        expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, ["0", "0", ".58", "1"]);
+                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, ["0", "0", ".58", "1"]);
                     });
                 });
                 it("should convert ease-in-out function to cubic-bezier function parameters", function () {
                     runs(function () {
                         makeBezierCurveUI("ease-in-out");
-                        expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, [".42", "0", ".58", "1"]);
+                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, [".42", "0", ".58", "1"]);
                     });
                 });
             });
@@ -505,9 +505,9 @@ define(function (require, exports, module) {
                  */
                 function testCubicBezierClick(opts) {
                     makeBezierCurveUI("cubic-bezier(.42, 0, .58 ,1)");
-                    var $item = $(timingFunctionEditor[opts.item]);
+                    var $item = $(bezierCurveEditor[opts.item]);
                     eventAtOffset("click", $item, opts.clickAt);
-                    expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, opts.expected);
+                    expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, opts.expected);
                 }
 
                 /**
@@ -524,13 +524,13 @@ define(function (require, exports, module) {
                  */
                 function testCubicBezierDrag(opts) {
                     makeBezierCurveUI("cubic-bezier(.42, 0, .58 ,1)");
-                    var $downItem = $(timingFunctionEditor[opts.downItem]),
-                        $dragItem = $(timingFunctionEditor[opts.dragItem]);
+                    var $downItem = $(bezierCurveEditor[opts.downItem]),
+                        $dragItem = $(bezierCurveEditor[opts.dragItem]);
                     
                     eventAtOffset("mousedown", $downItem, opts.clickAt);
                     eventAtOffset("mousemove", $dragItem, opts.dragTo);
                     $downItem.trigger("mouseup");
-                    expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, opts.expected);
+                    expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, opts.expected);
                 }
                 
                 it("should move point P1 on mousedown in curve", function () {
@@ -595,10 +595,10 @@ define(function (require, exports, module) {
                  */
                 function testBezierCurveKey(opts) {
                     makeBezierCurveUI(opts.curve, opts.callback);
-                    var $item = $(timingFunctionEditor[opts.item]);
+                    var $item = $(bezierCurveEditor[opts.item]);
                     $item.focus();
                     $item.trigger(makeKeyEvent(opts));
-                    expectArraysToBeEqual(timingFunctionEditor._cubicBezierCoords, opts.expected);
+                    expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, opts.expected);
                 }
                 
                 it("should increase P1 x-value by .02 on right arrow", function () {
