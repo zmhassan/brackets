@@ -38,7 +38,8 @@ define(function (require, exports, module) {
     var StepEditorTemplate   = require("text!StepEditorTemplate.html");
     
     /** @const @type {number} */
-    var STEP_MULTIPLIER =   5,      // TODO: remove
+    var STEP_LINE       =   1,
+        DASH_LINE       =   2,
         HEIGHT_ABOVE    =  75,      // TODO: remove
         HEIGHT_BELOW    =  75,      // TODO: remove
         HEIGHT_MAIN     = 150,    // height of main grid
@@ -77,8 +78,8 @@ define(function (require, exports, module) {
         var ctx = this.canvas.getContext("2d"),
             p = this.padding;
 
-        ctx.scale(canvas.width * (1 - p[1] - p[3]), -canvas.height * 0.5 * (1 - p[0] - p[2]));
-        ctx.translate(p[3] / (1 - p[1] - p[3]), (-1 - p[0] / (1 - p[0] - p[2])) - 0.5);
+        ctx.scale(canvas.width * (1 - p[1] - p[3]), -canvas.height * (1 - p[0] - p[2]));
+        ctx.translate(p[3] / (1 - p[1] - p[3]), (-1 - p[0] / (1 - p[0] - p[2])));
     }
 
     StepCanvas.prototype = {
@@ -120,6 +121,7 @@ define(function (require, exports, module) {
          * @param {Element} element Endpoint handle <button> element
          * @return {Array.string[2]}
          */
+/*
         offsetsToCoordinates: function (element) {
             var p = this.padding,
                 w = this.canvas.width,
@@ -137,6 +139,64 @@ define(function (require, exports, module) {
                 this.prettify((h - parseInt($(element).css("top"), 10) - p[2]) / (h - p[0] - p[2]))
             ];
         },
+*/
+
+        drawPoint: function (ctx, settings, x, y, isFilled) {
+            // Points are always step color
+            ctx.beginPath();
+            ctx.lineWidth   = settings.pointLineWidth;
+            ctx.strokeStyle = settings.stepColor;
+            ctx.arc(x, y, settings.pointRadius, 0, 2 * Math.PI, false);
+            ctx.stroke();
+            if (isFilled) {
+                ctx.fillStyle = settings.stepColor;
+                ctx.fill();
+            }
+            ctx.closePath();
+        },
+
+        drawLine: function (ctx, settings, x1, y1, x2, y2, type) {
+            ctx.beginPath();
+            if (type === STEP_LINE) {
+                ctx.lineWidth   = settings.stepLineWidth;
+                ctx.strokeStyle = settings.stepColor;
+            } else if (type === DASH_LINE) {
+                ctx.lineWidth   = settings.dashLineWidth;
+                ctx.strokeStyle = settings.dashColor;
+            }
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            ctx.closePath();
+        },
+
+        drawStartInterval: function (ctx, settings, x1, y1, x2, y2) {
+            // Draw empty start point
+            this.drawPoint(ctx, settings, x1, y1, false);
+
+            // Draw dashed line up to next step
+            this.drawLine(ctx, settings, x1, y2, x1, y2, STEP_LINE);
+
+            // Draw filled mid point
+            this.drawPoint(ctx, settings, x1, y2, true);
+
+            // Draw step line
+            this.drawLine(ctx, settings, x1, y2, x2, y2, STEP_LINE);
+        },
+
+        drawEndInterval: function (ctx, settings, x1, y1, x2, y2) {
+            // Draw filled start point
+            this.drawPoint(ctx, settings, x1, y1, true);
+
+            // Draw step line
+            this.drawLine(ctx, settings, x1, y1, x2, y1, STEP_LINE);
+
+            // Draw empty mid point
+            this.drawPoint(ctx, settings, x2, y1, false);
+
+            // Draw dashed line up to next step
+            this.drawLine(ctx, settings, x2, y1, x2, y2, STEP_LINE);
+        },
 
         /**
          * Paint canvas
@@ -144,17 +204,19 @@ define(function (require, exports, module) {
          * @param {Object} settings Paint settings
          */
         plot: function (settings) {
-            var sp = this.stepParams,
+            var setting, i, interval,
+                sp = this.stepParams,
+                isStart = (sp.timing === "start"),
                 ctx = this.canvas.getContext("2d"),
-                setting;
+                p = [];
 
             var defaultSettings = {
-                handleTimingFunction: "#1461FC",
-                handleThickness: 0.008,
-                vBorderThickness: 0.02,
-                hBorderThickness: 0.01,
-                stepTimingFunction: "#1461FC",
-                stepThickness: 0.03
+                stepColor: "#1461fc",
+                dashColor: "#dddddd",
+                stepLineWidth:  0.02,
+                dashLineWidth:  0.005,
+                pointLineWidth: 0.005,
+                pointRadius:    0.01
             };
 
             settings = settings || {};
@@ -167,46 +229,28 @@ define(function (require, exports, module) {
                 }
             }
 
-            ctx.clearRect(-0.5, -0.5, 2, 2);
+            // Build points array. There's a starting point at 0,0
+            // plus a point for each step
+            p[0] = { x: 0, y: 0 };
+            for (i = 1; i <= sp.count; i++) {
+                interval = i / sp.count;
+                p[i] = { x: interval, y: interval };
+            }
 
-            // Draw control handles
-/*
-            ctx.beginPath();
-            ctx.fillStyle = settings.handleTimingFunction;
-            ctx.lineWidth = settings.handleThickness;
-            ctx.strokeStyle = settings.handleTimingFunction;
+            // Start with a clean slate
+            ctx.clearRect(-0.1, -0.1, 1.1, 1.1);
 
-            ctx.moveTo(0, 0);
-            ctx.lineTo(xy[0], xy[1]);
-            ctx.moveTo(1, 1);
-            ctx.lineTo(xy[2], xy[3]);
+            // Draw each interval
+            for (i = 1; i < p.length; i++) {
+                if (isStart) {
+                    this.drawStartInterval(ctx, settings, p[i - 1].x, p[i - 1].y, p[i].x, p[i].y);
+                } else {
+                    this.drawEndInterval(ctx, settings, p[i - 1].x, p[i - 1].y, p[i].x, p[i].y);
+                }
+            }
 
-            ctx.stroke();
-            ctx.closePath();
-
-            ctx.beginPath();
-            ctx.arc(xy[0], xy[1], 1.5 * settings.handleThickness, 0, 2 * Math.PI, false);
-            ctx.closePath();
-
-            ctx.fill();
-
-            ctx.beginPath();
-            ctx.arc(xy[2], xy[3], 1.5 * settings.handleThickness, 0, 2 * Math.PI, false);
-            ctx.closePath();
-
-            ctx.fill();
-*/
-
-/*
-            // Draw bezier curve
-            ctx.beginPath();
-            ctx.lineWidth = settings.stepThickness;
-            ctx.strokeStyle = settings.bezierColor;
-            ctx.moveTo(0, 0);
-            ctx.bezierCurveTo(xy[0], xy[1], xy[2], xy[3], 1, 1);
-            ctx.stroke();
-            ctx.closePath();
-*/
+            // Draw last point. It's always filled.
+            this.drawPoint(ctx, settings, p[p.length - 1].x, p[p.length - 1].y, true);
         },
 
         /**
@@ -606,8 +650,8 @@ define(function (require, exports, module) {
         if (match[0].match(/^steps/)) {
             // steps()
             return {
-                count:  parseInt(match[0], 10),
-                timing: match[1] || "end"
+                count:  parseInt(match[1], 10),
+                timing: match[2] || "end"
             };
         } else {
             // handle special cases of steps functions

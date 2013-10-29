@@ -285,7 +285,7 @@
 .step-editor canvas.steps {
     position: absolute;
     z-index: 1;
-    top: -75px;
+    top: 0;
     left: 0;
 
     -moz-user-select: none;
