@@ -16,7 +16,7 @@
 }
 
 .bezier-curve-editor .cubic-bezier {
-    background: url(grid.png) 0px -75px repeat;
+    background: url(grid.png) 0px -75px repeat-x;
     border-left: 1px solid #bbb;
     border-right: 1px solid #bbb;
     background-size: 15px 450px;
@@ -152,7 +152,7 @@
 
 .step-editor {
     position: relative;
-    height: 150px;
+    height: 180px;
     margin: 0 25px;
 }
 
@@ -161,12 +161,8 @@
 }
 
 .step-editor .steps-func {
-    background: url(grid.png) 0px 0px repeat;
-    border-left: 1px solid #bbb;
-    border-right: 1px solid #bbb;
-    background-size: 15px 450px;
-    height: 149px;
-    width: 149px;
+    height: 179px;
+    width: 179px;
     margin: 0 0 0 25px;
     position: absolute;
     top: 0;
@@ -176,8 +172,8 @@
 .step-editor:after {
     content: "";
     display: block;
-    height: 149px;
-    width: 149px;
+    height: 179px;
+    width: 179px;
     margin: 0 0 0 25px;
     background-position: 2px 0;
     position: absolute;
@@ -190,8 +186,8 @@
     left: 0;
     line-height: 0;
     top: 0;
-    width: 149px;
-    height: 149px;
+    width: 179px;
+    height: 179px;
     -moz-box-sizing: content-box;
     box-sizing: content-box;
 }

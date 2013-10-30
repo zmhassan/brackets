@@ -82,6 +82,21 @@ define(function (require, exports, module) {
 
     StepCanvas.prototype = {
 
+        drawBackground: function () {
+            this.ctx.beginPath();
+            this.ctx.lineWidth   = this.settings.borderWidth;
+            this.ctx.strokeStyle = this.settings.borderColor;
+            this.ctx.fillStyle = this.settings.bgColor;
+            this.ctx.moveTo(0, 0);
+            this.ctx.lineTo(0, 1);
+            this.ctx.lineTo(1, 1);
+            this.ctx.lineTo(1, 0);
+            this.ctx.lineTo(0, 0);
+            this.ctx.stroke();
+            this.ctx.fill();
+            this.ctx.closePath();
+        },
+
         drawPoint: function (x, y, isFilled) {
             // Points are always step color
             this.ctx.beginPath();
@@ -155,8 +170,11 @@ define(function (require, exports, module) {
                 p = [];
 
             var defaultSettings = {
-                stepColor: "#1461fc",
-                dashColor: "#b8b8b8",
+                bgColor:        "#fff",
+                borderColor:    "#bbb",
+                stepColor:      "#1461fc",
+                dashColor:      "#b8b8b8",
+                borderWidth:    0.00667,
                 stepLineWidth:  0.02,
                 dashLineWidth:  0.008,
                 pointLineWidth: 0.008,
@@ -184,7 +202,8 @@ define(function (require, exports, module) {
             }
 
             // Start with a clean slate
-            this.ctx.clearRect(-0.1, -0.1, 1.1, 1.1);
+            this.ctx.clearRect(-0.5, -0.5, 2, 2);
+            this.drawBackground();
 
             // Draw each interval
             last = p.length - 1;
@@ -196,7 +215,8 @@ define(function (require, exports, module) {
                 }
             }
 
-            // Draw last point. It's always filled.
+            // Each interval draws start and mid point for that interval,
+            // so we need to draw last point. It's always filled.
             this.drawPoint(p[last].x, p[last].y, true);
         },
 
@@ -291,7 +311,10 @@ define(function (require, exports, module) {
 
         this.canvas.stepEditor = this;
 
-        this.stepCanvas = new StepCanvas(this.canvas, null, [0]);
+        // Padding (3rd param)is scaled, so 0.1 translates to 15px
+        // Note that this is rendered inside canvas CSS "content"
+        // (i.e. this does not map to CSS padding)
+        this.stepCanvas = new StepCanvas(this.canvas, null, [0.1]);
       
         // redraw canvas
         this._updateCanvas();
