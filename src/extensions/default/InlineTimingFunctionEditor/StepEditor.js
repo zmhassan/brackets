@@ -40,8 +40,6 @@ define(function (require, exports, module) {
     /** @const @type {number} */
     var STEP_LINE       =   1,
         DASH_LINE       =   2,
-        HEIGHT_ABOVE    =  75,      // TODO: remove
-        HEIGHT_BELOW    =  75,      // TODO: remove
         HEIGHT_MAIN     = 150,    // height of main grid
         WIDTH_MAIN      = 150;    // width of main grid
 
@@ -228,214 +226,11 @@ define(function (require, exports, module) {
     // Event handlers
     
     /**
-     * Handle click in <canvas> element
-     *
-     * @param {Event} e Mouse click event
-     */
-/*
-    function _canvasClick(e) {
-        var self = e.target,
-            stepEditor = self.stepEditor;
-
-        var curveBoundingBox = stepEditor._getCanvasBoundingBox(),
-            left = curveBoundingBox.left,
-            top  = curveBoundingBox.top,
-            x    = e.pageX - left,
-            y    = e.pageY - top - HEIGHT_ABOVE,
-            $P1  = $(stepEditor.P1),
-            $P2  = $(stepEditor.P2);
-
-        // Helper function to calculate distance between 2-D points
-        function distance(x1, y1, x2, y2) {
-            return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
-        }
-
-        // Find which point is closer
-        var distP1 = distance(x, y, parseInt($P1.css("left"), 10), parseInt($P1.css("top"), 10)),
-            distP2 = distance(x, y, parseInt($P2.css("left"), 10), parseInt($P2.css("top"), 10)),
-            $P     = (distP1 < distP2) ? $P1 : $P2;
-
-        $P.css({
-            left: x + "px",
-            top:  y + "px"
-        });
-        $P.get(0).focus();
-
-        // update coords
-        stepEditor._stepParams = stepEditor.stepCanvas
-            .offsetsToCoordinates(stepEditor.P1)
-            .concat(stepEditor.stepCanvas.offsetsToCoordinates(stepEditor.P2));
-
-        stepEditor._commitTimingFunction();
-        stepEditor._updateCanvas();
-    }
-*/
-
-    /**
-     * Helper function for handling point move
-     *
-     * @param {Event} e Mouse move event
-     * @param {number} x New horizontal position
-     * @param {number} y New vertical position
-     */
-/*
-    function handlePointMove(e, x, y) {
-        var self = e.target,
-            stepEditor = self.stepEditor;
-
-        // Helper function to redraw curve
-        function mouseMoveRedraw() {
-            if (!stepEditor.dragElement) {
-                animationRequest = null;
-                return;
-            }
-
-            // Update code
-            stepEditor._commitTimingFunction();
-
-            stepEditor._updateCanvas();
-            animationRequest = window.webkitRequestAnimationFrame(mouseMoveRedraw);
-        }
-
-        // This is a dragging state, but left button is no longer down, so mouse
-        // exited element, was released, and re-entered element. Treat like a drop.
-        if (stepEditor.dragElement && (e.which !== 1)) {
-            stepEditor.dragElement = null;
-            stepEditor._commitTimingFunction();
-            stepEditor._updateCanvas();
-            stepEditor = null;
-            return;
-        }
-
-        // Constrain time (x-axis) to 0 to 1 range. Progression (y-axis) is
-        // theoretically not constrained, although canvas to drawing curve is
-        // arbitrarily constrained to -0.5 to 1.5 range.
-        x = Math.min(Math.max(0, x), WIDTH_MAIN);
-
-        if (stepEditor.dragElement) {
-            $(stepEditor.dragElement).css({
-                left: x + "px",
-                top:  y + "px"
-            });
-        }
-
-        // update coords
-//        stepEditor._stepParams = stepEditor.stepCanvas
-//            .offsetsToCoordinates(stepEditor.P1)
-//            .concat(stepEditor.stepCanvas.offsetsToCoordinates(stepEditor.P2));
-        stepEditor._stepParams = stepEditor.stepCanvas.stepParams;
-
-        if (!animationRequest) {
-            animationRequest = window.webkitRequestAnimationFrame(mouseMoveRedraw);
-        }
-    }
-*/
-
-    /**
-     * Update Time (x-axis) and Progression (y-axis) data for mouse position
-     *
-     * @param {Element} canvas <canvas> element
-     * @param {number} x Horizontal position
-     * @param {number} y Vertical position
-     */
-/*
-    function updateTimeProgression(curve, x, y) {
-        curve.parentNode.setAttribute("data-time", Math.round(100 * x / WIDTH_MAIN));
-        curve.parentNode.setAttribute("data-progression", Math.round(100 * ((HEIGHT_MAIN - y) / HEIGHT_MAIN)));
-    }
-*/
-
-    /**
-     * Handle mouse move in <canvas> element
-     *
-     * @param {Event} e Mouse move event
-     */
-/*
-    function _canvasMouseMove(e) {
-        var self = e.target,
-            stepEditor = self.stepEditor,
-            curveBoundingBox = stepEditor._getCanvasBoundingBox(),
-            left   = curveBoundingBox.left,
-            top    = curveBoundingBox.top,
-            x = e.pageX - left,
-            y = e.pageY - top - HEIGHT_ABOVE;
-
-        updateTimeProgression(self, x, y);
-
-        if (stepEditor.dragElement) {
-            if (e.pageX === 0 && e.pageY === 0) {
-                return;
-            }
-
-            handlePointMove(e, x, y);
-        }
-    }
-*/
-
-    /**
-     * Handle mouse move in <button> element
-     *
-     * @param {Event} e Mouse move event
-     */
-/*
-    function _pointMouseMove(e) {
-        var self = e.target,
-            stepEditor = self.stepEditor,
-            curveBoundingBox = stepEditor._getCanvasBoundingBox(),
-            left = curveBoundingBox.left,
-            top  = curveBoundingBox.top,
-            x = e.pageX - left,
-            y = e.pageY - top - HEIGHT_ABOVE;
-
-        updateTimeProgression(stepEditor.canvas, x, y);
-
-        if (e.pageX === 0 && e.pageY === 0) {
-            return;
-        }
-
-        handlePointMove(e, x, y);
-    }
-*/
-
-    /**
-     * Handle mouse down in <button> element
-     *
-     * @param {Event} e Mouse down event
-     */
-/*
-    function _pointMouseDown(e) {
-        var self = e.target;
-
-        self.stepEditor.dragElement = self;
-    }
-*/
-
-    /**
-     * Handle mouse up in <button> element
-     *
-     * @param {Event} e Mouse up event
-     */
-/*
-    function _pointMouseUp(e) {
-        var self = e.target;
-
-        self.focus();
-
-        if (self.stepEditor.dragElement) {
-            self.stepEditor.dragElement = null;
-            self.stepEditor._commitTimingFunction();
-            self.stepEditor._updateCanvas();
-        }
-    }
-*/
-
-    /**
      * Handle key down in <canvas> element
      *
      * @param {Event} e Key down event
      */
     function _canvasKeyDown(e) {
-/*
         var code = e.keyCode,
             self = e.target,
             stepEditor = self.stepEditor;
@@ -444,53 +239,31 @@ define(function (require, exports, module) {
             e.preventDefault();
 
             // Arrow keys pressed
-            var $this = $(e.target),
-                left = parseInt($this.css("left"), 10),
-                top  = parseInt($this.css("top"), 10),
-                offset = (e.shiftKey ? 15 : 3),
-                newVal;
-
             switch (code) {
             case KeyEvent.DOM_VK_LEFT:
-                newVal = Math.max(0, left - offset);
-                if (left === newVal) {
-                    return false;
-                }
-                $this.css({ left: newVal + "px" });
+                stepEditor.stepCanvas.stepParams.timing = "start";
                 break;
             case KeyEvent.DOM_VK_UP:
-                newVal = Math.max(-HEIGHT_ABOVE, top - offset);
-                if (top === newVal) {
-                    return false;
-                }
-                $this.css({ top: newVal + "px" });
+                // No upper limit
+                stepEditor.stepCanvas.stepParams.count++;
                 break;
             case KeyEvent.DOM_VK_RIGHT:
-                newVal = Math.min(WIDTH_MAIN, left + offset);
-                if (left === newVal) {
-                    return false;
-                }
-                $this.css({ left: newVal + "px" });
+                stepEditor.stepCanvas.stepParams.timing = "end";
                 break;
             case KeyEvent.DOM_VK_DOWN:
-                newVal = Math.min(HEIGHT_MAIN + HEIGHT_BELOW, top + offset);
-                if (top === newVal) {
-                    return false;
+                if (stepEditor.stepCanvas.stepParams.count > 1) {
+                    stepEditor.stepCanvas.stepParams.count--;
                 }
-                $this.css({ top: newVal + "px" });
                 break;
             }
 
-            // update coords
-//            stepEditor._stepParams = stepEditor.stepCanvas
-//                .offsetsToCoordinates(stepEditor.P1)
-//                .concat(stepEditor.stepCanvas.offsetsToCoordinates(stepEditor.P2));
+            // update step params
             stepEditor._stepParams = stepEditor.stepCanvas.stepParams;
 
             stepEditor._commitTimingFunction();
             stepEditor._updateCanvas();
+            return true;
         }
-*/
 
         return false;
     }
@@ -510,62 +283,28 @@ define(function (require, exports, module) {
         $parent.append(this.$element);
         
         this._callback = callback;
-        this.dragElement = null;
 
         // current step function params
         this._stepParams = this._getStepParams(stepMatch);
 
-//        this.P1 = this.$element.find(".P1")[0];
-//        this.P2 = this.$element.find(".P2")[0];
         this.canvas = this.$element.find(".steps")[0];
 
-//        this.P1.stepEditor = this.P2.stepEditor = this;
         this.canvas.stepEditor = this;
 
-//        this.stepCanvas = new StepCanvas(this.canvas, null, [0, 0]);
         this.stepCanvas = new StepCanvas(this.canvas, null, [0]);
       
         // redraw canvas
         this._updateCanvas();
 
-        $(this.canvas)
-//            .on("click",     _canvasClick)
-//            .on("mousemove", _canvasMouseMove);
-            .on("keydown",   _canvasKeyDown);
-//        $(this.P1)
-//            .on("mousemove", _pointMouseMove)
-//            .on("mousedown", _pointMouseDown)
-//            .on("mouseup",   _pointMouseUp)
-//            .on("keydown",   _pointKeyDown);
-//        $(this.P2)
-//            .on("mousemove", _pointMouseMove)
-//            .on("mousedown", _pointMouseDown)
-//            .on("mouseup",   _pointMouseUp)
-//            .on("keydown",   _pointKeyDown);
+        $(this.canvas).on("keydown", _canvasKeyDown);
     }
 
     /**
      * Destructor called by InlineTimingFunctionEditor.onClosed()
      */
     StepEditor.prototype.destroy = function () {
-
-//        this.P1.stepEditor = this.P2.stepEditor = null;
         this.canvas.stepEditor = null;
-
-        $(this.canvas)
-//            .off("click",     _canvasClick)
-//            .off("mousemove", _canvasMouseMove);
-            .off("keydown",   _canvasKeyDown);
-//        $(this.P1)
-//            .off("mousemove", _pointMouseMove)
-//            .off("mousedown", _pointMouseDown)
-//            .off("mouseup",   _pointMouseUp)
-//            .off("keydown",   _pointKeyDown);
-//        $(this.P2)
-//            .off("mousemove", _pointMouseMove)
-//            .off("mousedown", _pointMouseDown)
-//            .off("mouseup",   _pointMouseUp)
-//            .off("keydown",   _pointKeyDown);
+        $(this.canvas).off("keydown", _canvasKeyDown);
     };
 
 
@@ -645,17 +384,6 @@ define(function (require, exports, module) {
         // collect data, build model
         if (this._stepParams) {
             this.stepCanvas.stepParams = window.stepParams = new StepParameters(this._stepParams);
-
-//            var offsets = this.stepCanvas.getOffsets();
-//
-//            $(this.P1).css({
-//                left: offsets[0].left,
-//                top:  offsets[0].top
-//            });
-//            $(this.P2).css({
-//                left: offsets[1].left,
-//                top:  offsets[1].top
-//            });
 
             this.stepCanvas.plot();
         }

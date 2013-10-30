@@ -15,8 +15,8 @@
 }
 
 .baz {
-    transition-timing-function: steps(4,end);
-    transition-timing-function: steps(12, start);
+    transition-timing-function: steps(4, end);
+    transition-timing-function: steps(12, end);
     transition-timing-function: steps(24);
     transition-timing-function: step-start;
     transition-timing-function: step-end;
