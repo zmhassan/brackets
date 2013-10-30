@@ -84,118 +84,65 @@ define(function (require, exports, module) {
 
     StepCanvas.prototype = {
 
-        /**
-         * Calculates CSS offsets for <canvas> element
-         *
-         * @return {left:string, top:string}
-         */
-/*
-        getOffsets: function () {
-            var p = this.padding,
-                w = this.canvas.width,
-                h = this.canvas.height * 0.5;
-
-            return [{
-                left: w * (this.stepParams.coordinates[0]     * (1 - p[3] - p[1]) - p[3]) + "px",
-                top:  h * (1 - this.stepParams.coordinates[1] * (1 - p[0] - p[2]) - p[0]) + "px"
-            }, {
-                left: w * (this.stepParams.coordinates[2]     * (1 - p[3] - p[1]) - p[3]) + "px",
-                top:  h * (1 - this.stepParams.coordinates[3] * (1 - p[0] - p[2]) - p[0]) + "px"
-            }];
-        },
-*/
-
-        /**
-         * Round off number to hundreths place, convert to string, and strip leading zero
-         *
-         * @param {number} v Value
-         * @return {string}
-         */
-        prettify: function (v) {
-            return (Math.round(v * 100) / 100).toString().replace(/^0\./, ".");
-        },
-
-        /**
-         * Get CSS left, top offsets for endpoint handle
-         *
-         * @param {Element} element Endpoint handle <button> element
-         * @return {Array.string[2]}
-         */
-/*
-        offsetsToCoordinates: function (element) {
-            var p = this.padding,
-                w = this.canvas.width,
-                h = this.canvas.height * 0.5,
-                x,
-                y;
-
-            // Convert padding percentage to actual padding
-            p = p.map(function (a, i) {
-                return a * ((i % 2) ? w : h);
-            });
-
-            return [
-                this.prettify((parseInt($(element).css("left"), 10)    - p[3]) / (w + p[1] + p[3])),
-                this.prettify((h - parseInt($(element).css("top"), 10) - p[2]) / (h - p[0] - p[2]))
-            ];
-        },
-*/
-
-        drawPoint: function (ctx, settings, x, y, isFilled) {
+        drawPoint: function (x, y, isFilled) {
             // Points are always step color
-            ctx.beginPath();
-            ctx.lineWidth   = settings.pointLineWidth;
-            ctx.strokeStyle = settings.stepColor;
-            ctx.arc(x, y, settings.pointRadius, 0, 2 * Math.PI, false);
-            ctx.stroke();
+            this.ctx.beginPath();
+            this.ctx.lineWidth   = this.settings.pointLineWidth;
+            this.ctx.strokeStyle = this.settings.stepColor;
+            this.ctx.arc(x, y, this.settings.pointRadius, 0, 2 * Math.PI, false);
+            this.ctx.stroke();
             if (isFilled) {
-                ctx.fillStyle = settings.stepColor;
-                ctx.fill();
+                this.ctx.fillStyle = this.settings.stepColor;
+                this.ctx.fill();
             }
-            ctx.closePath();
+            this.ctx.closePath();
         },
 
-        drawLine: function (ctx, settings, x1, y1, x2, y2, type) {
-            ctx.beginPath();
+        drawLine: function (x1, y1, x2, y2, type) {
+            this.ctx.beginPath();
             if (type === STEP_LINE) {
-                ctx.lineWidth   = settings.stepLineWidth;
-                ctx.strokeStyle = settings.stepColor;
+                this.ctx.lineWidth   = this.settings.stepLineWidth;
+                this.ctx.strokeStyle = this.settings.stepColor;
             } else if (type === DASH_LINE) {
-                ctx.lineWidth   = settings.dashLineWidth;
-                ctx.strokeStyle = settings.dashColor;
+                this.ctx.lineWidth   = this.settings.dashLineWidth;
+                this.ctx.strokeStyle = this.settings.dashColor;
             }
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.stroke();
-            ctx.closePath();
+            this.ctx.moveTo(x1, y1);
+            this.ctx.lineTo(x2, y2);
+            this.ctx.stroke();
+            this.ctx.closePath();
         },
 
-        drawStartInterval: function (ctx, settings, x1, y1, x2, y2) {
+        drawStartInterval: function (x1, y1, x2, y2) {
+            var pr = this.settings.pointRadius;
+
             // Draw empty start point
-            this.drawPoint(ctx, settings, x1, y1, false);
+            this.drawPoint(x1, y1, false);
 
             // Draw dashed line up to next step
-            this.drawLine(ctx, settings, x1, y2, x1, y2, STEP_LINE);
+            this.drawLine(x1, y1 + pr, x1, y2, DASH_LINE);
 
             // Draw filled mid point
-            this.drawPoint(ctx, settings, x1, y2, true);
+            this.drawPoint(x1, y2, true);
 
             // Draw step line
-            this.drawLine(ctx, settings, x1, y2, x2, y2, STEP_LINE);
+            this.drawLine(x1, y2, x2 - pr, y2, STEP_LINE);
         },
 
-        drawEndInterval: function (ctx, settings, x1, y1, x2, y2) {
+        drawEndInterval: function (x1, y1, x2, y2) {
+            var pr = this.settings.pointRadius;
+
             // Draw filled start point
-            this.drawPoint(ctx, settings, x1, y1, true);
+            this.drawPoint(x1, y1, true);
 
             // Draw step line
-            this.drawLine(ctx, settings, x1, y1, x2, y1, STEP_LINE);
+            this.drawLine(x1, y1, x2 - pr, y1, STEP_LINE);
 
             // Draw empty mid point
-            this.drawPoint(ctx, settings, x2, y1, false);
+            this.drawPoint(x2, y1, false);
 
             // Draw dashed line up to next step
-            this.drawLine(ctx, settings, x2, y1, x2, y2, STEP_LINE);
+            this.drawLine(x2, y1 + pr, x2, y2, DASH_LINE);
         },
 
         /**
@@ -204,30 +151,31 @@ define(function (require, exports, module) {
          * @param {Object} settings Paint settings
          */
         plot: function (settings) {
-            var setting, i, interval,
+            var setting, i, j, last, interval,
                 sp = this.stepParams,
                 isStart = (sp.timing === "start"),
-                ctx = this.canvas.getContext("2d"),
                 p = [];
 
             var defaultSettings = {
                 stepColor: "#1461fc",
-                dashColor: "#dddddd",
+                dashColor: "#b8b8b8",
                 stepLineWidth:  0.02,
-                dashLineWidth:  0.005,
-                pointLineWidth: 0.005,
-                pointRadius:    0.01
+                dashLineWidth:  0.008,
+                pointLineWidth: 0.008,
+                pointRadius:    0.015
             };
 
-            settings = settings || {};
+            this.settings = settings || {};
 
             for (setting in defaultSettings) {
                 if (defaultSettings.hasOwnProperty(setting)) {
-                    if (!settings.hasOwnProperty(setting)) {
-                        settings[setting] = defaultSettings[setting];
+                    if (!this.settings.hasOwnProperty(setting)) {
+                        this.settings[setting] = defaultSettings[setting];
                     }
                 }
             }
+
+            this.ctx = this.canvas.getContext("2d");
 
             // Build points array. There's a starting point at 0,0
             // plus a point for each step
@@ -238,19 +186,20 @@ define(function (require, exports, module) {
             }
 
             // Start with a clean slate
-            ctx.clearRect(-0.1, -0.1, 1.1, 1.1);
+            this.ctx.clearRect(-0.1, -0.1, 1.1, 1.1);
 
             // Draw each interval
-            for (i = 1; i < p.length; i++) {
+            last = p.length - 1;
+            for (i = 0, j = 1; i < last; i++, j++) {
                 if (isStart) {
-                    this.drawStartInterval(ctx, settings, p[i - 1].x, p[i - 1].y, p[i].x, p[i].y);
+                    this.drawStartInterval(p[i].x, p[i].y, p[j].x, p[j].y);
                 } else {
-                    this.drawEndInterval(ctx, settings, p[i - 1].x, p[i - 1].y, p[i].x, p[i].y);
+                    this.drawEndInterval(p[i].x, p[i].y, p[j].x, p[j].y);
                 }
             }
 
             // Draw last point. It's always filled.
-            this.drawPoint(ctx, settings, p[p.length - 1].x, p[p.length - 1].y, true);
+            this.drawPoint(p[last].x, p[last].y, true);
         },
 
         /**
@@ -389,16 +338,19 @@ define(function (require, exports, module) {
      * @param {number} x Horizontal position
      * @param {number} y Vertical position
      */
+/*
     function updateTimeProgression(curve, x, y) {
         curve.parentNode.setAttribute("data-time", Math.round(100 * x / WIDTH_MAIN));
         curve.parentNode.setAttribute("data-progression", Math.round(100 * ((HEIGHT_MAIN - y) / HEIGHT_MAIN)));
     }
+*/
 
     /**
      * Handle mouse move in <canvas> element
      *
      * @param {Event} e Mouse move event
      */
+/*
     function _canvasMouseMove(e) {
         var self = e.target,
             stepEditor = self.stepEditor,
@@ -410,7 +362,6 @@ define(function (require, exports, module) {
 
         updateTimeProgression(self, x, y);
 
-/*
         if (stepEditor.dragElement) {
             if (e.pageX === 0 && e.pageY === 0) {
                 return;
@@ -418,8 +369,8 @@ define(function (require, exports, module) {
 
             handlePointMove(e, x, y);
         }
-*/
     }
+*/
 
     /**
      * Handle mouse move in <button> element
@@ -479,12 +430,12 @@ define(function (require, exports, module) {
 */
 
     /**
-     * Handle key down in <button> element
+     * Handle key down in <canvas> element
      *
      * @param {Event} e Key down event
      */
+    function _canvasKeyDown(e) {
 /*
-    function _pointKeyDown(e) {
         var code = e.keyCode,
             self = e.target,
             stepEditor = self.stepEditor;
@@ -539,10 +490,10 @@ define(function (require, exports, module) {
             stepEditor._commitTimingFunction();
             stepEditor._updateCanvas();
         }
+*/
 
         return false;
     }
-*/
 
 
     /**
@@ -571,14 +522,16 @@ define(function (require, exports, module) {
 //        this.P1.stepEditor = this.P2.stepEditor = this;
         this.canvas.stepEditor = this;
 
-        this.stepCanvas = new StepCanvas(this.canvas, null, [0, 0]);
-        
+//        this.stepCanvas = new StepCanvas(this.canvas, null, [0, 0]);
+        this.stepCanvas = new StepCanvas(this.canvas, null, [0]);
+      
         // redraw canvas
         this._updateCanvas();
 
         $(this.canvas)
 //            .on("click",     _canvasClick)
-            .on("mousemove", _canvasMouseMove);
+//            .on("mousemove", _canvasMouseMove);
+            .on("keydown",   _canvasKeyDown);
 //        $(this.P1)
 //            .on("mousemove", _pointMouseMove)
 //            .on("mousedown", _pointMouseDown)
@@ -601,7 +554,8 @@ define(function (require, exports, module) {
 
         $(this.canvas)
 //            .off("click",     _canvasClick)
-            .off("mousemove", _canvasMouseMove);
+//            .off("mousemove", _canvasMouseMove);
+            .off("keydown",   _canvasKeyDown);
 //        $(this.P1)
 //            .off("mousemove", _pointMouseMove)
 //            .off("mousedown", _pointMouseDown)
