@@ -33,7 +33,8 @@ define(function (require, exports, module) {
         testContentCSS          = require("text!unittest-files/unittests.css"),
         provider                = require("main").inlineTimingFunctionEditorProvider,
         TimingFunctionUtils     = require("TimingFunctionUtils"),
-        BezierCurveEditor       = require("BezierCurveEditor").BezierCurveEditor;
+        BezierCurveEditor       = require("BezierCurveEditor").BezierCurveEditor,
+        StepEditor              = require("StepEditor").StepEditor;
 
     describe("Inline Timing Function Editor", function () {
 
@@ -382,10 +383,16 @@ define(function (require, exports, module) {
             it("should bookmark second cubic-bezier() function when opened in inline editor", function () {
                 testOpenTimingFunction({line: 13, ch: 80}, 75, 107);
             });
+            it("should bookmark steps() function when opened in inline editor", function () {
+                testOpenTimingFunction({line: 17, ch: 37}, 32, 45);
+            });
+            it("should bookmark step-start function when opened in inline editor", function () {
+                testOpenTimingFunction({line: 20, ch: 40}, 32, 42);
+            });
         });
         
         describe("TimingFunction editor UI", function () {
-            var bezierCurveEditor;
+            var timingFuncEditor;
             
             /**
              * Creates a hidden BezierCurveEditor and appends it to the body. Note that this is a
@@ -395,37 +402,61 @@ define(function (require, exports, module) {
              * @param {?function} callback An optional callback to be passed as the BezierCurveEditor's
              *     callback. If none is supplied, a dummy function is passed.
              */
-            function makeBezierCurveUI(initialTimingFunction, callback) {
-                bezierCurveEditor = new BezierCurveEditor(
-                    $(document.body),
-                    TimingFunctionUtils.timingFunctionMatch(initialTimingFunction, true),
-                    callback || function () { }
-                );
+            function makeTimingFuncUI(initialTimingFunction, callback) {
+                var parent = $(document.body),
+                    match = TimingFunctionUtils.timingFunctionMatch(initialTimingFunction, true),
+                    cb = callback || function () { };
+
+                if (match.isBezier) {
+                    timingFuncEditor = new BezierCurveEditor(parent, match, cb);
+                } else if (match.isStep) {
+                    timingFuncEditor = new StepEditor(parent, match, cb);
+                }
                 
                 // Hide it
-                bezierCurveEditor.getRootElement().css("display", "none");
+                timingFuncEditor.getRootElement().css("display", "none");
             }
             
             afterEach(function () {
-                bezierCurveEditor.getRootElement().remove();
+                timingFuncEditor.getRootElement().remove();
+                timingFuncEditor = null;
             });
             
             
             describe("Initial Load and External Update", function () {
             
-                it("should load the initial timing function correctly", function () {
+                it("should load the initial cubic-bezier function correctly", function () {
                     runs(function () {
-                        makeBezierCurveUI("cubic-bezier(.2, .3, .4, .5)");
-                        expect(bezierCurveEditor).toBeTruthy();
-                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, [".2", ".3", ".4", ".5"]);
+                        makeTimingFuncUI("cubic-bezier(.2, .3, .4, .5)");
+                        expect(timingFuncEditor).toBeTruthy();
+                        expect(timingFuncEditor._cubicBezierCoords).toBeTruthy();
+                        expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, [".2", ".3", ".4", ".5"]);
                     });
                 });
-                it("should load externally updated timing function correctly", function () {
+                it("should load externally updated cubic-bezier function correctly", function () {
                     runs(function () {
-                        makeBezierCurveUI("cubic-bezier(.1, .3, .5, .7)");
+                        makeTimingFuncUI("cubic-bezier(.1, .3, .5, .7)");
                         var matchUpdate = TimingFunctionUtils.timingFunctionMatch("cubic-bezier(.2, .4, .6, .8)", true);
-                        bezierCurveEditor.handleExternalUpdate(matchUpdate);
-                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, [".2", ".4", ".6", ".8"]);
+                        timingFuncEditor.handleExternalUpdate(matchUpdate);
+                        expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, [".2", ".4", ".6", ".8"]);
+                    });
+                });
+                it("should load the initial steps function correctly", function () {
+                    runs(function () {
+                        makeTimingFuncUI("steps(5, start)");
+                        expect(timingFuncEditor).toBeTruthy();
+                        expect(timingFuncEditor._stepParams).toBeTruthy();
+                        expect(timingFuncEditor._stepParams.count).toEqual(5);
+                        expect(timingFuncEditor._stepParams.timing).toEqual("start");
+                    });
+                });
+                it("should load externally updated steps function correctly", function () {
+                    runs(function () {
+                        makeTimingFuncUI("steps(5, start)");
+                        var matchUpdate = TimingFunctionUtils.timingFunctionMatch("steps(6, end)", true);
+                        timingFuncEditor.handleExternalUpdate(matchUpdate);
+                        expect(timingFuncEditor._stepParams.count).toEqual(6);
+                        expect(timingFuncEditor._stepParams.timing).toEqual("end");
                     });
                 });
             });
@@ -434,32 +465,48 @@ define(function (require, exports, module) {
                 
                 it("should convert linear function to cubic-bezier function parameters", function () {
                     runs(function () {
-                        makeBezierCurveUI("linear");
-                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, ["0", "0", "1", "1"]);
+                        makeTimingFuncUI("linear");
+                        expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, ["0", "0", "1", "1"]);
                     });
                 });
                 it("should convert ease function to cubic-bezier function parameters", function () {
                     runs(function () {
-                        makeBezierCurveUI("ease");
-                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, [".25", ".1", ".25", "1"]);
+                        makeTimingFuncUI("ease");
+                        expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, [".25", ".1", ".25", "1"]);
                     });
                 });
                 it("should convert ease-in function to cubic-bezier function parameters", function () {
                     runs(function () {
-                        makeBezierCurveUI("ease-in");
-                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, [".42", "0", "1", "1"]);
+                        makeTimingFuncUI("ease-in");
+                        expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, [".42", "0", "1", "1"]);
                     });
                 });
                 it("should convert ease-out function to cubic-bezier function parameters", function () {
                     runs(function () {
-                        makeBezierCurveUI("ease-out");
-                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, ["0", "0", ".58", "1"]);
+                        makeTimingFuncUI("ease-out");
+                        expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, ["0", "0", ".58", "1"]);
                     });
                 });
                 it("should convert ease-in-out function to cubic-bezier function parameters", function () {
                     runs(function () {
-                        makeBezierCurveUI("ease-in-out");
-                        expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, [".42", "0", ".58", "1"]);
+                        makeTimingFuncUI("ease-in-out");
+                        expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, [".42", "0", ".58", "1"]);
+                    });
+                });
+                it("should convert step-start function to steps function parameters", function () {
+                    runs(function () {
+                        makeTimingFuncUI("step-start");
+                        expect(timingFuncEditor).toBeTruthy();
+                        expect(timingFuncEditor._stepParams).toBeTruthy();
+                        expect(timingFuncEditor._stepParams.count).toEqual(1);
+                        expect(timingFuncEditor._stepParams.timing).toEqual("start");
+                    });
+                });
+                it("should convert step-end function to steps function parameters", function () {
+                    runs(function () {
+                        makeTimingFuncUI("step-end");
+                        expect(timingFuncEditor._stepParams.count).toEqual(1);
+                        expect(timingFuncEditor._stepParams.timing).toEqual("end");
                     });
                 });
             });
@@ -504,10 +551,10 @@ define(function (require, exports, module) {
                  *     expected: The expected array of values for _cubicBezierCoords.
                  */
                 function testCubicBezierClick(opts) {
-                    makeBezierCurveUI("cubic-bezier(.42, 0, .58 ,1)");
-                    var $item = $(bezierCurveEditor[opts.item]);
+                    makeTimingFuncUI("cubic-bezier(.42, 0, .58 ,1)");
+                    var $item = $(timingFuncEditor[opts.item]);
                     eventAtOffset("click", $item, opts.clickAt);
-                    expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, opts.expected);
+                    expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, opts.expected);
                 }
 
                 /**
@@ -523,14 +570,14 @@ define(function (require, exports, module) {
                  *     expected: The expected array of values for _cubicBezierCoords.
                  */
                 function testCubicBezierDrag(opts) {
-                    makeBezierCurveUI("cubic-bezier(.42, 0, .58 ,1)");
-                    var $downItem = $(bezierCurveEditor[opts.downItem]),
-                        $dragItem = $(bezierCurveEditor[opts.dragItem]);
+                    makeTimingFuncUI("cubic-bezier(.42, 0, .58 ,1)");
+                    var $downItem = $(timingFuncEditor[opts.downItem]),
+                        $dragItem = $(timingFuncEditor[opts.dragItem]);
                     
                     eventAtOffset("mousedown", $downItem, opts.clickAt);
                     eventAtOffset("mousemove", $dragItem, opts.dragTo);
                     $downItem.trigger("mouseup");
-                    expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, opts.expected);
+                    expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, opts.expected);
                 }
                 
                 it("should move point P1 on mousedown in curve", function () {
@@ -583,9 +630,9 @@ define(function (require, exports, module) {
                 }
 
                 /**
-                 * Test a key event on the given UI element.
+                 * Create a timing function editor and trigger a key event on it.
                  * @param {object} opts The parameters to test:
-                 *     curve: The initial cubic-bezier curve
+                 *     func: The initial timing function
                  *     item: The (string) name of the member of BezierCurveEditor
                  *          that references the element to test.
                  *     key: The KeyEvent key code to simulate.
@@ -593,69 +640,69 @@ define(function (require, exports, module) {
                  *          key being down (default false).
                  *     expected: The expected array of values for _cubicBezierCoords.
                  */
-                function testBezierCurveKey(opts) {
-                    makeBezierCurveUI(opts.curve, opts.callback);
-                    var $item = $(bezierCurveEditor[opts.item]);
+                function triggerTimingFunctionEditorKey(opts) {
+                    makeTimingFuncUI(opts.func, opts.callback);
+                    var $item = $(timingFuncEditor[opts.item]);
                     $item.focus();
                     $item.trigger(makeKeyEvent(opts));
-                    expectArraysToBeEqual(bezierCurveEditor._cubicBezierCoords, opts.expected);
                 }
                 
-                it("should increase P1 x-value by .02 on right arrow", function () {
-                    testBezierCurveKey({
-                        curve:     "cubic-bezier(.42, 0, .58 ,1)",
+                // cubic-bezier() tests
+                it("should increase P1 x-value by .02 on right arrow in cubic-bezier()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "cubic-bezier(.42, 0, .58, 1)",
                         item:      "P1",
                         key:       KeyEvent.DOM_VK_RIGHT,
-                        shift:     false,
-                        expected:  [".44", "0", ".58", "1"]
+                        shift:     false
                     });
+                    expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, [".44", "0", ".58", "1"]);
                 });
-                it("should increase P1 y-value by .1 on shift up arrow", function () {
-                    testBezierCurveKey({
-                        curve:     "cubic-bezier(.42, 0, .58 ,1)",
+                it("should increase P1 y-value by .1 on shift up arrow in cubic-bezier()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "cubic-bezier(.42, 0, .58, 1)",
                         item:      "P1",
                         key:       KeyEvent.DOM_VK_UP,
-                        shift:     true,
-                        expected:  [".42", ".1", ".58", "1"]
+                        shift:     true
                     });
+                    expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, [".42", ".1", ".58", "1"]);
                 });
-                it("should decrease P2 x-value by .02 on left arrow", function () {
-                    testBezierCurveKey({
-                        curve:     "cubic-bezier(.42, 0, .58 ,1)",
+                it("should decrease P2 x-value by .02 on left arrow in cubic-bezier()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "cubic-bezier(.42, 0, .58, 1)",
                         item:      "P2",
                         key:       KeyEvent.DOM_VK_LEFT,
-                        shift:     false,
-                        expected:  [".42", "0", ".56", "1"]
+                        shift:     false
                     });
+                    expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, [".42", "0", ".56", "1"]);
                 });
-                it("should decrease P2 y-value by .1 on shift down arrow", function () {
-                    testBezierCurveKey({
-                        curve:     "cubic-bezier(.42, 0, .58 ,1)",
+                it("should decrease P2 y-value by .1 on shift down arrow in cubic-bezier()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "cubic-bezier(.42, 0, .58 ,1)",
                         item:      "P2",
                         key:       KeyEvent.DOM_VK_DOWN,
-                        shift:     true,
-                        expected:  [".42", "0", ".58", ".9"]
+                        shift:     true
                     });
+                    expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, [".42", "0", ".58", ".9"]);
                 });
-                it("should not decrease P1 x-value below 0 on left arrow", function () {
-                    testBezierCurveKey({
-                        curve:     "cubic-bezier(0, 0, 1 ,1)",
+                it("should not decrease P1 x-value below 0 on left arrow in cubic-bezier()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "cubic-bezier(0, 0, 1, 1)",
                         item:      "P1",
                         key:       KeyEvent.DOM_VK_LEFT,
-                        shift:     false,
-                        expected:  ["0", "0", "1", "1"]
+                        shift:     false
                     });
+                    expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, ["0", "0", "1", "1"]);
                 });
-                it("should not increase P2 x-value above 0 on shift right arrow", function () {
-                    testBezierCurveKey({
-                        curve:     "cubic-bezier(0, 0, 1 ,1)",
+                it("should not increase P2 x-value above 0 on shift right arrow in cubic-bezier()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "cubic-bezier(0, 0, 1, 1)",
                         item:      "P2",
                         key:       KeyEvent.DOM_VK_RIGHT,
-                        shift:     true,
-                        expected:  ["0", "0", "1", "1"]
+                        shift:     true
                     });
+                    expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, ["0", "0", "1", "1"]);
                 });
-                it("should call callback function after edit", function () {
+                it("should call callback function after cubic-bezier edit in cubic-bezier()", function () {
                     var calledBack = false;
                     
                     var _callback = function (timingFunctionString) {
@@ -664,14 +711,95 @@ define(function (require, exports, module) {
                     };
                         
                     runs(function () {
-                        testBezierCurveKey({
-                            curve:     "cubic-bezier(.42, 0, .58 ,1)",
+                        triggerTimingFunctionEditorKey({
+                            func:      "cubic-bezier(.42, 0, .58 ,1)",
                             item:      "P1",
                             key:       KeyEvent.DOM_VK_UP,
                             shift:     true,
-                            expected:  [".42", ".1", ".58", "1"],
                             callback:  _callback
                         });
+                        expectArraysToBeEqual(timingFuncEditor._cubicBezierCoords, [".42", ".1", ".58", "1"]);
+                    });
+                    
+                    runs(function () {
+                        expect(calledBack).toBeTruthy();
+                    });
+                });
+                
+                // steps() tests
+                it("should increase count by 1 on up arrow in steps()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "steps(5)",
+                        item:      "canvas",
+                        key:       KeyEvent.DOM_VK_UP
+                    });
+                    expect(timingFuncEditor._stepParams.count).toEqual(6);
+                });
+                it("should decrease count by 1 on down arrow in steps()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "steps(5)",
+                        item:      "canvas",
+                        key:       KeyEvent.DOM_VK_DOWN
+                    });
+                    expect(timingFuncEditor._stepParams.count).toEqual(4);
+                });
+                it("should change start to end on right arrow in steps()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "steps(5, start)",
+                        item:      "canvas",
+                        key:       KeyEvent.DOM_VK_RIGHT
+                    });
+                    expect(timingFuncEditor._stepParams.timing).toEqual("end");
+                });
+                it("should change end to start on left arrow in steps()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "steps(5, end)",
+                        item:      "canvas",
+                        key:       KeyEvent.DOM_VK_LEFT
+                    });
+                    expect(timingFuncEditor._stepParams.timing).toEqual("start");
+                });
+                it("should not decrease count to be less than 1 on down arrow in steps()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "steps(1)",
+                        item:      "canvas",
+                        key:       KeyEvent.DOM_VK_DOWN
+                    });
+                    expect(timingFuncEditor._stepParams.count).toEqual(1);
+                });
+                it("should not change start to end on left arrow in steps()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "steps(5, start)",
+                        item:      "canvas",
+                        key:       KeyEvent.DOM_VK_LEFT
+                    });
+                    expect(timingFuncEditor._stepParams.timing).toEqual("start");
+                });
+                it("should not change end to start on right arrow in steps()", function () {
+                    triggerTimingFunctionEditorKey({
+                        func:      "steps(5, end)",
+                        item:      "canvas",
+                        key:       KeyEvent.DOM_VK_RIGHT
+                    });
+                    expect(timingFuncEditor._stepParams.timing).toEqual("end");
+                });
+
+                it("should call callback function after steps function edit", function () {
+                    var calledBack = false;
+                    
+                    var _callback = function (timingFunctionString) {
+                        calledBack = true;
+                        expect(timingFunctionString).toBe("steps(5, start)");
+                    };
+                        
+                    runs(function () {
+                        triggerTimingFunctionEditorKey({
+                            func:      "steps(4, start)",
+                            item:      "canvas",
+                            key:       KeyEvent.DOM_VK_UP,
+                            callback:  _callback
+                        });
+                        expect(timingFuncEditor._stepParams.count).toEqual(5);
                     });
                     
                     runs(function () {
